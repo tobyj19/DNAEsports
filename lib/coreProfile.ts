@@ -155,3 +155,30 @@ export async function buildTeamProfile(team: Team): Promise<TeamProfile> {
     avgAdjOddsPct: adjOdds.length ? mean(adjOdds) : null,
   };
 }
+
+/**
+ * Team-level win% at each distance, weighted by races raced there. This is the
+ * figure that actually matters for map veto decisions — the maps' race sequences
+ * are fixed at specific distances, so this shows which team is stronger at each
+ * one, distance-by-distance, rather than just an overall power number.
+ */
+export interface DistanceComparisonPoint {
+  distance: number;
+  winPct: number;
+  races: number;
+}
+
+export function teamDistanceStrength(profile: TeamProfile): DistanceComparisonPoint[] {
+  const byDist = new Map<number, { races: number; wins: number }>();
+  for (const core of profile.cores) {
+    for (const d of core.allDistances) {
+      const entry = byDist.get(d.distance) ?? { races: 0, wins: 0 };
+      entry.races += d.races;
+      entry.wins += d.winPct * d.races;
+      byDist.set(d.distance, entry);
+    }
+  }
+  return Array.from(byDist.entries())
+    .map(([distance, { races, wins }]) => ({ distance, races, winPct: races > 0 ? wins / races : 0 }))
+    .sort((a, b) => a.distance - b.distance);
+}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Team } from "@/lib/api";
 import type { TeamProfile, CoreProfile } from "@/lib/coreProfile";
+import { SummaryBarChart, DistanceStrengthChart, PowerVarianceScatter } from "./comparison-charts";
 
 function fmtPct(v: number | null) {
   return v == null ? "—" : `${v.toFixed(0)}%`;
@@ -167,6 +168,26 @@ export default function CompareClient({ teams }: { teams: Team[] }) {
 
       {profileA && profileB && (
         <div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div className="rounded-lg border border-line bg-panel p-4">
+              <h2 className="text-sm font-medium text-[#9CA6B0] mb-2">Team Averages</h2>
+              <SummaryBarChart a={profileA} b={profileB} />
+            </div>
+            <div className="rounded-lg border border-line bg-panel p-4">
+              <h2 className="text-sm font-medium text-[#9CA6B0] mb-2">Roster Shape — Power vs Variance</h2>
+              <PowerVarianceScatter a={profileA} b={profileB} />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-line bg-panel p-4 mb-8">
+            <h2 className="text-sm font-medium text-[#9CA6B0] mb-1">Win Rate by Distance</h2>
+            <p className="text-xs text-[#9CA6B0] mb-2">
+              The 1000-2200m range covers every distance used across all 4 maps. A gap here is a real
+              lever for veto/pick decisions.
+            </p>
+            <DistanceStrengthChart a={profileA} b={profileB} />
+          </div>
+
           <div className="overflow-x-auto rounded-lg border border-line mb-8">
             <table className="text-sm w-full">
               <thead>
