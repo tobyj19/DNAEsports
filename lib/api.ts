@@ -120,3 +120,40 @@ export function getTeams() {
 export function getCoresByHids(hids: number[]) {
   return post<{ cores: CoreIdentity[] }>("/esports/cores_by_hids", { hids });
 }
+
+// ---------- Core power / race history (used for the Compare page) ----------
+
+export interface PowerMetric {
+  fill: { normalized: number; per: number };
+}
+
+export interface ModePower {
+  hid: number;
+  rvmode: string;
+  races_n: number;
+  power: PowerMetric;
+  variance: PowerMetric;
+  adjodds: PowerMetric;
+}
+
+export interface PowerResult {
+  hid: number;
+  power: Partial<Record<"bike" | "car" | "horse", ModePower>>;
+}
+
+export function getPower(hid: number) {
+  return post<PowerResult>("/cores/power", { hid });
+}
+
+export interface RaceHistoryEntry {
+  hid: number;
+  pos: number;
+  time: number | null;
+  cb: number | string | null;
+  rvmode: string;
+  race_name: string;
+}
+
+export function getRaceHistory(hid: number) {
+  return post<RaceHistoryEntry[]>("/i/hraces", { hid });
+}
