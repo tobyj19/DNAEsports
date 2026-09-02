@@ -14,7 +14,7 @@ import {
   ZAxis,
 } from "recharts";
 import type { TeamProfile } from "@/lib/coreProfile";
-import { teamDistanceStrength } from "@/lib/coreProfile";
+import { teamDistanceStrength, ESPORTS_DISTANCES } from "@/lib/coreProfile";
 
 const TEAM_A_COLOR = "#4ADE80"; // mint
 const TEAM_B_COLOR = "#F5A623"; // amber
@@ -56,11 +56,10 @@ export function SummaryBarChart({ a, b }: { a: TeamProfile; b: TeamProfile }) {
 export function DistanceStrengthChart({ a, b }: { a: TeamProfile; b: TeamProfile }) {
   const aDist = teamDistanceStrength(a);
   const bDist = teamDistanceStrength(b);
-  const distances = Array.from(new Set([...aDist.map((d) => d.distance), ...bDist.map((d) => d.distance)]))
-    .filter((d) => d >= 1000 && d <= 2200) // the esports maps only use this range
-    .sort((x, y) => x - y);
 
-  const data = distances.map((distance) => {
+  const data = Array.from(ESPORTS_DISTANCES)
+    .sort((x, y) => x - y)
+    .map((distance) => {
     const aPoint = aDist.find((d) => d.distance === distance);
     const bPoint = bDist.find((d) => d.distance === distance);
     return {

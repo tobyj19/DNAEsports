@@ -48,6 +48,12 @@ function median(nums: number[]): number {
  * gives the real distance in meters (confirmed against the esports maps' known
  * 1000-2200m range and against how race times scale with cb).
  */
+/** The DNA Esports maps only ever use these 7 distances (1000-2200m). Race history
+ * includes other game modes too, which use other distances (e.g. 1500, 1700, 900) —
+ * those get excluded here so "best distance" and win-by-distance stats stay relevant
+ * to the esports league specifically. */
+export const ESPORTS_DISTANCES = new Set([1000, 1200, 1400, 1600, 1800, 2000, 2200]);
+
 function computeDistanceStats(races: Awaited<ReturnType<typeof getRaceHistory>>): {
   best: DistanceStat | null;
   all: DistanceStat[];
@@ -57,6 +63,7 @@ function computeDistanceStats(races: Awaited<ReturnType<typeof getRaceHistory>>)
   for (const r of races) {
     if (r.rvmode !== "bike" || r.cb == null || r.time == null) continue;
     const dist = Number(r.cb) * 100;
+    if (!ESPORTS_DISTANCES.has(dist)) continue;
     if (!byDist.has(dist)) byDist.set(dist, []);
     byDist.get(dist)!.push({ time: r.time, pos: r.pos });
   }
