@@ -97,7 +97,7 @@ export interface StandingsTable {
 }
 
 export interface StandingsResult {
-  season: number;
+  season: string;
   built_at: string;
   subtitle: string;
   events_total: number;
@@ -129,8 +129,55 @@ export interface CoreIdentity {
 
 // ---------- Calls ----------
 
-export function getStandings() {
-  return post<StandingsResult>("/esports/standings");
+export function getStandings(season?: string) {
+  return post<StandingsResult>("/esports/standings", season ? { season } : {});
+}
+
+export interface Season {
+  season_id: string;
+  label: string;
+  short: string;
+  kind: string;
+  status: string;
+  num: number;
+  ord: number;
+  weeks: number;
+}
+
+export function getSeasons() {
+  return post<{ seasons: Season[] }>("/esports/seasons");
+}
+
+export interface MapRaceEntry {
+  ord: number;
+  racetype_id: string;
+  racetype_title: string;
+  cb: number;
+  point_to: "home" | "away" | null;
+}
+
+export interface MapAssociation {
+  home_wins: number;
+  away_wins: number;
+  winner: "home" | "away" | null;
+  ended_at: string | null;
+  races: Record<string, MapRaceEntry>;
+}
+
+export interface EsportsEvent {
+  event_id: string;
+  season: string;
+  week: number;
+  stage: string;
+  teams: { home: string; away: string };
+  start_time: string;
+  map_allocated: Record<string, string>;
+  map_eliminated: string | null;
+  map_association: Record<string, MapAssociation>;
+}
+
+export function getEvents() {
+  return post<EsportsEvent[]>("/esports/events");
 }
 
 export function getTeams() {
