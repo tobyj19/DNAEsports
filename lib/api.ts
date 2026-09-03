@@ -188,6 +188,15 @@ export function getCoresByHids(hids: number[]) {
   return post<{ cores: CoreIdentity[] }>("/esports/cores_by_hids", { hids });
 }
 
+/** cores_by_hids caps out at 200 hids per call, so larger lists need batching. */
+export async function getCoresByHidsBatched(hids: number[]): Promise<CoreIdentity[]> {
+  const BATCH_SIZE = 200;
+  const batches: number[][] = [];
+  for (let i = 0; i < hids.length; i += BATCH_SIZE) batches.push(hids.slice(i, i + BATCH_SIZE));
+  const results = await Promise.all(batches.map((b) => getCoresByHids(b)));
+  return results.flatMap((r) => r.cores);
+}
+
 // ---------- Core power / race history (used for the Compare page) ----------
 
 export interface PowerMetric {

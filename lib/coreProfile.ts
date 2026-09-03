@@ -94,7 +94,7 @@ function computeDistanceStats(races: Awaited<ReturnType<typeof getRaceHistory>>)
   return { best, all };
 }
 
-async function buildCoreProfile(hid: number, identity: CoreIdentity | undefined): Promise<CoreProfile> {
+export async function buildCoreProfile(hid: number, identity: CoreIdentity | undefined): Promise<CoreProfile> {
   const base: CoreProfile = {
     hid,
     name: identity?.name ?? `Core #${hid}`,
