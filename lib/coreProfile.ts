@@ -1,4 +1,20 @@
 import { getCoresByHids, getPower, getRaceHistory, CoreIdentity, Team } from "./api";
+import populationAvgTimes from "./data/population-avg-times.json";
+
+/** Whole-game average finish time per distance, weighted by every individual race
+ * (not by core), computed from a one-time crawl. Used to show how a core's own
+ * average compares to the field, since raw win% doesn't normalize for field strength. */
+export function getPopulationAvgTime(distance: number): number | null {
+  const entry = (populationAvgTimes as Record<string, { avgTime: number; totalRaces: number }>)[String(distance)];
+  return entry ? entry.avgTime : null;
+}
+
+export interface RaceScatterPoint {
+  time: number;
+  blueStar: boolean;
+  yellowStar: boolean;
+  fasterThanAvg: boolean;
+}
 
 export interface DistanceStat {
   distance: number;
@@ -6,7 +22,15 @@ export interface DistanceStat {
   avgTime: number;
   medianTime: number;
   bestTime: number;
+  worstTime: number;
+  timeRange: number; // worstTime - bestTime, in seconds
   winPct: number;
+  fasterCount: number; // races finished faster than this core's own average at this distance
+  slowerCount: number;
+  dezProfit: number; // sum(prize) - sum(fee), in DEZ
+  blueStarPct: number;
+  yellowStarPct: number;
+  scatter: RaceScatterPoint[];
 }
 
 export interface CoreProfile {
@@ -58,14 +82,20 @@ function computeDistanceStats(races: Awaited<ReturnType<typeof getRaceHistory>>)
   best: DistanceStat | null;
   all: DistanceStat[];
 } {
-  const byDist = new Map<number, { time: number; pos: number }[]>();
+  const byDist = new Map<number, { time: number; pos: number; star: number | null; prize: number; fee: number }[]>();
 
   for (const r of races) {
     if (r.rvmode !== "bike" || r.cb == null || r.time == null) continue;
     const dist = Number(r.cb) * 100;
     if (!ESPORTS_DISTANCES.has(dist)) continue;
     if (!byDist.has(dist)) byDist.set(dist, []);
-    byDist.get(dist)!.push({ time: r.time, pos: r.pos });
+    byDist.get(dist)!.push({
+      time: r.time,
+      pos: r.pos,
+      star: r.star ?? null,
+      prize: r.prize_eth ?? 0,
+      fee: r.fee ?? 0,
+    });
   }
 
   const all: DistanceStat[] = [];
@@ -74,13 +104,38 @@ function computeDistanceStats(races: Awaited<ReturnType<typeof getRaceHistory>>)
   for (const [dist, entries] of byDist.entries()) {
     const times = entries.map((e) => e.time);
     const wins = entries.filter((e) => e.pos === 1).length;
+    const avgTime = mean(times);
+    const bestTime = Math.min(...times);
+    const worstTime = Math.max(...times);
+
+    // Blue star = star value 2 or 5 (5 = both, since 2+3=5), yellow = 3 or 5.
+    // Confirmed by cross-referencing raw race records against the site's own
+    // displayed Blue/Yellow Star % for known cores.
+    const blueCount = entries.filter((e) => e.star === 2 || e.star === 5).length;
+    const yellowCount = entries.filter((e) => e.star === 3 || e.star === 5).length;
+
+    const scatter: RaceScatterPoint[] = entries.map((e) => ({
+      time: e.time,
+      blueStar: e.star === 2 || e.star === 5,
+      yellowStar: e.star === 3 || e.star === 5,
+      fasterThanAvg: e.time < avgTime,
+    }));
+
     const stat: DistanceStat = {
       distance: dist,
       races: entries.length,
-      avgTime: mean(times),
+      avgTime,
       medianTime: median(times),
-      bestTime: Math.min(...times),
+      bestTime,
+      worstTime,
+      timeRange: worstTime - bestTime,
       winPct: wins / entries.length,
+      fasterCount: entries.filter((e) => e.time < avgTime).length,
+      slowerCount: entries.filter((e) => e.time >= avgTime).length,
+      dezProfit: entries.reduce((sum, e) => sum + (e.prize - e.fee), 0),
+      blueStarPct: blueCount / entries.length,
+      yellowStarPct: yellowCount / entries.length,
+      scatter,
     };
     all.push(stat);
 
@@ -139,6 +194,41 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T)
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
   return results;
+}
+
+export interface SpeedResult {
+  distance: number | null; // null = weighted across all distances raced
+  avgTimeSec: number | null;
+  speedMps: number | null; // meters per second
+  races: number;
+}
+
+/** Computes a core's average speed. For a specific distance, it's just
+ * distance / avgTime at that distance. "Overall" (distance=null) is a
+ * races-weighted average across every distance the core has raced, so a
+ * core with 40 races at 1000m isn't drowned out by 3 races at 2200m. */
+export function computeAverageSpeed(profile: CoreProfile, distance: number | null): SpeedResult {
+  if (distance != null) {
+    const stat = profile.allDistances.find((d) => d.distance === distance);
+    if (!stat) return { distance, avgTimeSec: null, speedMps: null, races: 0 };
+    return { distance, avgTimeSec: stat.avgTime, speedMps: distance / stat.avgTime, races: stat.races };
+  }
+
+  if (profile.allDistances.length === 0) return { distance: null, avgTimeSec: null, speedMps: null, races: 0 };
+  let totalDistance = 0;
+  let totalTime = 0;
+  let totalRaces = 0;
+  for (const d of profile.allDistances) {
+    totalDistance += d.distance * d.races;
+    totalTime += d.avgTime * d.races;
+    totalRaces += d.races;
+  }
+  return {
+    distance: null,
+    avgTimeSec: totalRaces > 0 ? totalTime / totalRaces : null,
+    speedMps: totalTime > 0 ? totalDistance / totalTime : null,
+    races: totalRaces,
+  };
 }
 
 export async function buildTeamProfile(team: Team): Promise<TeamProfile> {

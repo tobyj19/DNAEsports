@@ -228,8 +228,15 @@ export interface RaceHistoryEntry {
   cb: number | string | null;
   rvmode: string;
   race_name: string;
+  star: number | null; // 0=none, 2=blue, 3=yellow, 5=both (2+3) — confirmed by cross-checking against the site's own display
+  prize_eth: number | null; // misleadingly named — this is the DEZ prize amount, not ETH
+  fee: number | null; // DEZ entry fee
 }
 
 export function getRaceHistory(hid: number) {
-  return post<RaceHistoryEntry[]>("/i/hraces", { hid });
+  // The API defaults to only the most recent 50 races if no limit is given —
+  // silently missing most of a core's history for anyone with a longer career.
+  // 500 comfortably covers every core we've seen (confirmed against real cores
+  // with 100+ races) without meaningfully increasing response time.
+  return post<RaceHistoryEntry[]>("/i/hraces", { hid, limit: 500 });
 }
