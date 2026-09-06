@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { BrowsableCore } from "@/lib/coreBrowser";
 import type { CoreProfile } from "@/lib/coreProfile";
 import { getPopulationAvgTime } from "@/lib/coreProfile";
+import { getLeaderboard, SNAPSHOT_META } from "@/lib/leaderboardData";
 import DistancePanel from "./distance-panel";
 
 const MAX_RESULTS = 150;
@@ -32,6 +33,7 @@ export default function CoreBrowserClient({ cores }: { cores: BrowsableCore[] })
 
   const [speedDistance, setSpeedDistance] = useState<string>("overall");
   const [speedRanking, setSpeedRanking] = useState<SpeedRankRow[] | null>(null);
+  const [rankingSource, setRankingSource] = useState<"live" | "snapshot" | null>(null);
   const [rankingLoading, setRankingLoading] = useState(false);
   const [rankingError, setRankingError] = useState<string | null>(null);
 
@@ -56,20 +58,65 @@ export default function CoreBrowserClient({ cores }: { cores: BrowsableCore[] })
   function updateQuery(v: string) {
     setQuery(v);
     setSpeedRanking(null);
+    setRankingSource(null);
   }
   function updateTeamFilter(v: string) {
     setTeamFilter(v);
     setSpeedRanking(null);
+    setRankingSource(null);
   }
   function updateElementFilter(v: string) {
     setElementFilter(v);
     setSpeedRanking(null);
+    setRankingSource(null);
   }
 
   async function rankBySpeed() {
     if (shown.length === 0) return;
     setRankingLoading(true);
     setRankingError(null);
+
+    // If the current filters narrow things down to 150 or fewer, we can guarantee
+    // every matching core gets live-crawled and ranked. If not, a live crawl would
+    // arbitrarily cut off at 150 in whatever order the list happens to be in — not
+    // "the fastest 150" — and could also risk the serverless function's time limit.
+    // In that case, fall back to the pre-computed snapshot (the same data behind the
+    // Leaderboards page), which actually is the true fastest across everyone.
+    const canGuaranteeFullCoverage = filtered.length <= MAX_RESULTS;
+
+    if (!canGuaranteeFullCoverage) {
+      if (speedDistance === "overall") {
+        setRankingError(
+          "\"Overall\" ranking needs a live crawl, which only works for 150 or fewer results. Narrow your search first, or pick a specific distance to use the pre-computed snapshot."
+        );
+        setRankingLoading(false);
+        return;
+      }
+      const snapshotRows = getLeaderboard("esports", Number(speedDistance));
+      const filteredSnapshot = snapshotRows.filter((r) => {
+        if (teamFilter && r.team !== teamFilter) return false;
+        if (elementFilter && r.element !== elementFilter) return false;
+        const q = query.trim().toLowerCase();
+        if (q && !r.name.toLowerCase().includes(q) && !String(r.hid).includes(q)) return false;
+        return true;
+      });
+      setSpeedRanking(
+        filteredSnapshot.map((r) => ({
+          hid: r.hid,
+          name: r.name,
+          element: r.element,
+          type: r.type,
+          powerPct: r.powerPct,
+          speedMps: r.speedMps,
+          avgTimeSec: r.avgTime,
+          races: r.races,
+        }))
+      );
+      setRankingSource("snapshot");
+      setRankingLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/core-speeds", {
         method: "POST",
@@ -85,6 +132,7 @@ export default function CoreBrowserClient({ cores }: { cores: BrowsableCore[] })
       }
       const data = await res.json();
       setSpeedRanking(data.results);
+      setRankingSource("live");
     } catch (e) {
       setRankingError(e instanceof Error ? e.message : "Failed to rank");
     } finally {
@@ -151,6 +199,7 @@ export default function CoreBrowserClient({ cores }: { cores: BrowsableCore[] })
             onChange={(e) => {
               setSpeedDistance(e.target.value);
               setSpeedRanking(null);
+    setRankingSource(null);
             }}
             className="bg-panel border border-line rounded px-3 py-2 text-sm"
           >
@@ -166,11 +215,20 @@ export default function CoreBrowserClient({ cores }: { cores: BrowsableCore[] })
             disabled={rankingLoading || shown.length === 0}
             className="px-4 py-2 rounded bg-mint text-ink text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {rankingLoading ? "Ranking…" : `Rank ${shown.length} results by speed`}
+            {rankingLoading
+              ? "Ranking…"
+              : filtered.length <= MAX_RESULTS
+              ? `Rank ${shown.length} results by speed`
+              : speedDistance === "overall"
+              ? `Rank ${shown.length} results by speed`
+              : `Show fastest at ${speedDistance}m (snapshot)`}
           </button>
           {speedRanking && (
             <button
-              onClick={() => setSpeedRanking(null)}
+              onClick={() => {
+                setSpeedRanking(null);
+                setRankingSource(null);
+              }}
               className="text-xs text-[#9CA6B0] hover:text-white"
             >
               Clear ranking
@@ -190,6 +248,16 @@ export default function CoreBrowserClient({ cores }: { cores: BrowsableCore[] })
               Retry
             </button>
           </div>
+        )}
+        {speedRanking && rankingSource === "snapshot" && (
+          <p className="text-xs text-amber mb-2">
+            Showing the pre-computed snapshot (captured {SNAPSHOT_META.esports.capturedAt}) since your search
+            wasn&apos;t narrow enough to guarantee live coverage of every match. Narrow it to {MAX_RESULTS} or
+            fewer results for a live crawl instead.
+          </p>
+        )}
+        {speedRanking && rankingSource === "live" && (
+          <p className="text-xs text-[#9CA6B0] mb-2">Live-ranked just now from current race history.</p>
         )}
 
         <p className="text-xs text-[#9CA6B0] mb-2">
