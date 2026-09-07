@@ -26,7 +26,7 @@ export interface Core {
   element: Element;
   gender: Gender;
   type: CoreType;
-  fno: number; // family number — used for inbreeding avoidance
+  fno: number; // display core number only — NOT a lineage/family indicator
   vault: string;
   vaultName: string;
 
@@ -41,10 +41,40 @@ export interface Core {
   category: DistanceCategory;
   bands: Record<Band, BandStrength>;
 
+  // Lineage — null for genesis cores (no parent data exists for them).
+  parents: number[] | null;
+  grandParents: number[] | null;
+
   // Breeding availability.
   inStud: boolean;
   priceUsd: number; // splice price in USD, 0 = free
   cycleSplicesRemaining: number; // mxcycle_splices_n - cycle_splices_n
+}
+
+export type LineageRelation = "unrelated" | "parent-offspring" | "sibling" | "cousin";
+
+export interface LineageAssessment {
+  relation: LineageRelation;
+  inbred: boolean;
+}
+
+/**
+ * Checks real genetic lineage via parents/grand_parents (from /splicing_info),
+ * replacing the earlier (incorrect) use of `fno` — which is just a display
+ * number, not a family/lineage indicator. Genesis cores (parents === null)
+ * have no lineage data at all, so they're treated as unrelated by default.
+ */
+export function assessLineage(sire: Core, dam: Core): LineageAssessment {
+  if (sire.parents?.includes(dam.hid) || dam.parents?.includes(sire.hid)) {
+    return { relation: "parent-offspring", inbred: true };
+  }
+  if (sire.parents && dam.parents && sire.parents.some((p) => dam.parents!.includes(p))) {
+    return { relation: "sibling", inbred: true };
+  }
+  if (sire.grandParents && dam.grandParents && sire.grandParents.some((g) => dam.grandParents!.includes(g))) {
+    return { relation: "cousin", inbred: true };
+  }
+  return { relation: "unrelated", inbred: false };
 }
 
 export type BreedingStrategy =
@@ -97,7 +127,7 @@ export interface BreedingPair {
   dam: Core; // female
   score: number;
   sameElement: boolean;
-  sameFamily: boolean;
+  lineage: LineageAssessment;
   predictedOffspring: {
     power: number;
     variance: number;
@@ -122,7 +152,7 @@ function predictOffspring(sire: Core, dam: Core) {
 
 /**
  * Option A — simple compatibility score.
- * Score = Power(40%) + Variance(30%) + AdjOdds(30%) + element bonus + family bonus
+ * Score = Power(40%) + Variance(30%) + AdjOdds(30%) + element bonus + lineage bonus/penalty
  */
 export function scoreSimplePair(sire: Core, dam: Core): number {
   const power = (sire.power + dam.power) / 2;
@@ -132,7 +162,9 @@ export function scoreSimplePair(sire: Core, dam: Core): number {
   let score = (power * 0.4 + variance * 0.3 + adjOdds * 0.3) * 100;
 
   if (sire.element === dam.element) score += 10;
-  score += sire.fno !== dam.fno ? 5 : -5;
+
+  const { inbred } = assessLineage(sire, dam);
+  score += inbred ? -5 : 5;
 
   return Math.max(0, Math.round(score * 10) / 10);
 }
@@ -205,19 +237,22 @@ export interface RankPairsOptions {
   minPower?: number; // 0-1 normalized
   market?: MarketAssumptions;
   limit?: number;
+  /** When true, drop any pair where sire and dam are owned by the same vault — for cross-vault breeding. */
+  crossVaultOnly?: boolean;
 }
 
 export function rankBreedingPairs(cores: Core[], options: RankPairsOptions): BreedingPair[] {
-  const { strategy, targetElement, minPower, market, limit = 10 } = options;
+  const { strategy, targetElement, minPower, market, limit = 10, crossVaultOnly = false } = options;
 
   const candidates = buildCandidatePairs(cores);
   const targetCategory = CATEGORY_STRATEGY_MAP[strategy];
 
   const results: BreedingPair[] = candidates
     .filter((c) => {
+      if (crossVaultOnly && c.sire.vault === c.dam.vault) return false;
       if (targetElement && c.sire.element !== targetElement && c.dam.element !== targetElement) return false;
       if (minPower !== undefined && (c.sire.power + c.dam.power) / 2 < minPower) return false;
-      if (strategy === "family-diversification" && c.sire.fno === c.dam.fno) return false;
+      if (strategy === "family-diversification" && assessLineage(c.sire, c.dam).inbred) return false;
       if (strategy === "budget" && c.sire.priceUsd > 0) return false;
       return true;
     })
@@ -242,7 +277,7 @@ export function rankBreedingPairs(cores: Core[], options: RankPairsOptions): Bre
         dam,
         score,
         sameElement: sire.element === dam.element,
-        sameFamily: sire.fno === dam.fno,
+        lineage: assessLineage(sire, dam),
         predictedOffspring,
         cost,
         estimatedValueUsd,

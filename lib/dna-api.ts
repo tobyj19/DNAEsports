@@ -82,6 +82,8 @@ interface PowerBulkResponse {
 
 interface SplicingInfoResult {
   hid: number;
+  parents: number[] | null;
+  grand_parents: number[] | null;
   splice_core: {
     cycle_splices_n: number;
     in_stud: boolean;
@@ -177,7 +179,8 @@ export async function fetchCores(hids: number[]): Promise<Core[]> {
 
   return mini.result.map((m): Core => {
     const bikePower = powerByHid.get(m.hid)?.power?.bike;
-    const s = splicingByHid.get(m.hid)?.splice_core ?? null;
+    const splicingInfo = splicingByHid.get(m.hid);
+    const s = splicingInfo?.splice_core ?? null;
     const allDistances = distancesByHid.get(m.hid) ?? [];
     const { category, bands } = classifyDistanceProfile(allDistances);
 
@@ -187,7 +190,9 @@ export async function fetchCores(hids: number[]): Promise<Core[]> {
       element: m.element,
       gender: m.gender,
       type: m.type,
-      fno: m.fno,
+      fno: m.fno, // display number only — see assessLineage() in dna-breeding.ts for real lineage
+      parents: splicingInfo?.parents ?? null,
+      grandParents: splicingInfo?.grand_parents ?? null,
       vault: m.vault,
       vaultName: m.vault_name,
       power: bikePower?.power.fill.normalized ?? 0,
