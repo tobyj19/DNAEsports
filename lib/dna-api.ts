@@ -47,13 +47,31 @@ function normalizeHidList(value: unknown): number[] | null {
   return null;
 }
 
-async function postJson<T>(path: string, body: unknown): Promise<T> {
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * POSTs to the API with automatic retry on 429 (rate limited) and 503
+ * (temporarily unavailable), using exponential backoff. Honors a
+ * Retry-After header when the API sends one, otherwise backs off
+ * 500ms / 1000ms / 2000ms.
+ */
+async function postJson<T>(path: string, body: unknown, retriesLeft = 3): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+
   if (!res.ok) {
+    if ((res.status === 429 || res.status === 503) && retriesLeft > 0) {
+      const retryAfterHeader = res.headers.get("Retry-After");
+      const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : NaN;
+      const backoffMs = Number.isFinite(retryAfterMs) ? retryAfterMs : 500 * 2 ** (3 - retriesLeft);
+      await sleep(backoffMs);
+      return postJson<T>(path, body, retriesLeft - 1);
+    }
     throw new Error(`DNA Racing API ${path} failed: ${res.status} ${res.statusText}`);
   }
   return res.json() as Promise<T>;
@@ -196,7 +214,7 @@ export async function fetchCores(hids: number[]): Promise<Core[]> {
   const powerByHid = new Map(power.result.map((p) => [p.hid, p]));
   const splicingByHid = new Map(splicing.result.map((s) => [s.hid, s]));
   const distancesByHid = new Map(
-    await mapWithConcurrency(hids, 8, async (hid) => [hid, await fetchDistanceStats(hid)] as const)
+    await mapWithConcurrency(hids, 4, async (hid) => [hid, await fetchDistanceStats(hid)] as const)
   );
 
   return mini.result.map((m): Core => {

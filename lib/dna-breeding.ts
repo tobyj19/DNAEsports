@@ -51,7 +51,7 @@ export interface Core {
   cycleSplicesRemaining: number; // mxcycle_splices_n - cycle_splices_n
 }
 
-export type LineageRelation = "unrelated" | "parent-offspring" | "sibling" | "cousin";
+export type LineageRelation = "unrelated" | "parent-offspring" | "grandparent-grandchild" | "full-sibling";
 
 export interface LineageAssessment {
   relation: LineageRelation;
@@ -60,9 +60,15 @@ export interface LineageAssessment {
 
 /**
  * Checks real genetic lineage via parents/grand_parents (from /splicing_info),
- * replacing the earlier (incorrect) use of `fno` — which is just a display
- * number, not a family/lineage indicator. Genesis cores (parents === null)
- * have no lineage data at all, so they're treated as unrelated by default.
+ * matching the game's actual breeding restriction (per the official "Family
+ * Splicing" rules): blocks direct parent, direct grandparent, and full
+ * siblings ONLY — same mom AND dad. Half-siblings (one shared parent) and
+ * cousins (a shared grandparent without direct ancestry) are explicitly
+ * allowed by the game and are NOT flagged here.
+ *
+ * fno is a display number only (confirmed) — never used for this check.
+ * Genesis cores (parents === null) have no lineage data, so they're treated
+ * as unrelated by default.
  */
 export function assessLineage(sire: Core, dam: Core): LineageAssessment {
   // Defensive Array.isArray checks: even though dna-api.ts normalizes this
@@ -72,16 +78,55 @@ export function assessLineage(sire: Core, dam: Core): LineageAssessment {
   const sireGrandParents = Array.isArray(sire.grandParents) ? sire.grandParents : null;
   const damGrandParents = Array.isArray(dam.grandParents) ? dam.grandParents : null;
 
+  // Direct parent-offspring: is either core literally one of the other's parents?
   if (sireParents?.includes(dam.hid) || damParents?.includes(sire.hid)) {
     return { relation: "parent-offspring", inbred: true };
   }
-  if (sireParents && damParents && sireParents.some((p) => damParents.includes(p))) {
-    return { relation: "sibling", inbred: true };
+
+  // Direct grandparent-grandchild: is either core literally one of the other's grandparents?
+  if (sireGrandParents?.includes(dam.hid) || damGrandParents?.includes(sire.hid)) {
+    return { relation: "grandparent-grandchild", inbred: true };
   }
-  if (sireGrandParents && damGrandParents && sireGrandParents.some((g) => damGrandParents.includes(g))) {
-    return { relation: "cousin", inbred: true };
+
+  // Full sibling: BOTH parents match exactly (not just one shared parent — that's
+  // a half-sibling, which the game allows).
+  if (sireParents && damParents && sireParents.length >= 2 && damParents.length >= 2) {
+    const sireSet = new Set(sireParents);
+    const damSet = new Set(damParents);
+    const sameParents = sireSet.size === damSet.size && [...sireSet].every((p) => damSet.has(p));
+    if (sameParents) return { relation: "full-sibling", inbred: true };
   }
+
   return { relation: "unrelated", inbred: false };
+}
+
+export type BreedingCoreType = "genesis" | "morphed" | "freak" | "xclass";
+
+/**
+ * Offspring type, from the official DNA Racing Breeding Chart. The chart is
+ * symmetric (order doesn't matter) — Genesis x Xclass and Xclass x Genesis
+ * both resolve to Xclass. Confirmed: the graphic's Xclass-row/Genesis-column
+ * cell showing "Genesis" was a labeling error in the source image.
+ */
+const BREEDING_CHART: Record<BreedingCoreType, Record<BreedingCoreType, BreedingCoreType>> = {
+  genesis: { genesis: "morphed", morphed: "freak", freak: "freak", xclass: "xclass" },
+  morphed: { genesis: "freak", morphed: "freak", freak: "xclass", xclass: "xclass" },
+  freak: { genesis: "freak", morphed: "xclass", freak: "xclass", xclass: "xclass" },
+  xclass: { genesis: "xclass", morphed: "xclass", freak: "xclass", xclass: "xclass" },
+};
+
+function isBreedingCoreType(type: string): type is BreedingCoreType {
+  return type === "genesis" || type === "morphed" || type === "freak" || type === "xclass";
+}
+
+/** Predicted offspring type per the Breeding Chart, or null if either parent's type isn't one of the 4 known rarities. */
+export function predictOffspringType(sire: Core, dam: Core): BreedingCoreType | null {
+  const sireType = sire.type.toLowerCase();
+  const damType = dam.type.toLowerCase();
+  if (isBreedingCoreType(sireType) && isBreedingCoreType(damType)) {
+    return BREEDING_CHART[sireType][damType];
+  }
+  return null;
 }
 
 export type BreedingStrategy =
@@ -139,6 +184,7 @@ export interface BreedingPair {
     power: number;
     variance: number;
     adjOdds: number;
+    type: BreedingCoreType | null; // null if either parent's type isn't in the known Breeding Chart
   };
   cost: number;
   estimatedValueUsd: number;
@@ -148,12 +194,14 @@ export interface BreedingPair {
 }
 
 function predictOffspring(sire: Core, dam: Core) {
-  // Simple midpoint estimate for ranking pairs against each other — not a
-  // guaranteed outcome. Real on-chain genetics can deviate from a flat average.
+  // Power/variance/adjOdds: simple midpoint estimate for ranking pairs against
+  // each other — not a guaranteed outcome. Real on-chain genetics can deviate
+  // from a flat average. Type: exact, per the official Breeding Chart.
   return {
     power: (sire.power + dam.power) / 2,
     variance: (sire.variance + dam.variance) / 2,
     adjOdds: (sire.adjOdds + dam.adjOdds) / 2,
+    type: predictOffspringType(sire, dam),
   };
 }
 

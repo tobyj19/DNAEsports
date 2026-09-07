@@ -73,7 +73,15 @@ export default function BreedingPage() {
     setError(null);
     try {
       const vaultsToLoad = vaultB ? [vaultA, vaultB] : [vaultA];
-      const results = await Promise.all(vaultsToLoad.map((v) => fetchVaultCores(v)));
+
+      // Load vaults one at a time rather than in parallel — each vault already
+      // fires several concurrent requests internally for race history, and
+      // running two vaults' worth of those at once was enough to trip the
+      // API's rate limit.
+      const results: Core[][] = [];
+      for (const v of vaultsToLoad) {
+        results.push(await fetchVaultCores(v));
+      }
 
       // Merge, deduping by hid in case the same core somehow shows up twice.
       const merged = new Map<number, Core>();
@@ -186,7 +194,8 @@ export default function BreedingPage() {
 
         {loading && cores.length === 0 && (
           <p className="mb-8 text-sm text-[#7D8C84]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
-            Pulling race history per core — this can take a moment for larger vaults.
+            Pulling race history per core — this can take a moment for larger vaults, and
+            longer still when loading two vaults (loaded one at a time to avoid rate limits).
           </p>
         )}
 
@@ -343,10 +352,10 @@ export default function BreedingPage() {
                         {pair.lineage.inbred && (
                           <span className="rounded-full border border-[#4A2A22] bg-[#2A1610] px-2 py-0.5 text-[#FF9E85]">
                             {pair.lineage.relation === "parent-offspring"
-                              ? "parent-offspring"
-                              : pair.lineage.relation === "sibling"
-                                ? "siblings — inbreeding"
-                                : "cousins — inbreeding"}
+                              ? "parent-offspring — blocked"
+                              : pair.lineage.relation === "grandparent-grandchild"
+                                ? "grandparent-grandchild — blocked"
+                                : "full siblings — blocked"}
                           </span>
                         )}
                         {pair.targetCategory && (
@@ -374,6 +383,13 @@ export default function BreedingPage() {
                         <StatRow label="PWR" value={pair.predictedOffspring.power} pct />
                         <StatRow label="VAR" value={pair.predictedOffspring.variance} pct />
                         <StatRow label="ADJ" value={pair.predictedOffspring.adjOdds} pct />
+                        <div
+                          className="mt-2 flex justify-between text-sm"
+                          style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+                        >
+                          <span className="text-[#7D8C84]">Type</span>
+                          <span className="text-[#E9F2ED]">{pair.predictedOffspring.type ?? "unknown"}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -427,6 +443,7 @@ function CoreBrowserTable({ cores, view, showVault }: { cores: Core[]; view: "st
             <th className="px-3 py-2">Core</th>
             <th className="px-3 py-2">Gender</th>
             <th className="px-3 py-2">Element</th>
+            <th className="px-3 py-2">Type</th>
             <th className="px-3 py-2">Category</th>
             <th className="px-3 py-2">PWR</th>
             <th className="px-3 py-2">VAR</th>
@@ -448,6 +465,7 @@ function CoreBrowserTable({ cores, view, showVault }: { cores: Core[]; view: "st
               </td>
               <td className="px-3 py-2 text-[#B7C3BC]">{c.gender}</td>
               <td className="px-3 py-2 text-[#B7C3BC]">{c.element}</td>
+              <td className="px-3 py-2 text-[#B7C3BC]">{c.type}</td>
               <td className="px-3 py-2 text-[#B7C3BC]">{c.category}</td>
               <td className="px-3 py-2 text-[#8CFF6B]">{Math.round(c.power * 1000) / 10}%</td>
               <td className="px-3 py-2 text-[#B7C3BC]">{Math.round(c.variance * 1000) / 10}%</td>
@@ -477,7 +495,7 @@ function ParentCard({ label, core, showVault }: { label: string; core: Core; sho
         {label} — {core.name} (#{core.hid})
       </div>
       <div className="text-sm text-[#B7C3BC]">
-        {core.element} · Core #{core.fno}
+        {core.element} · Core #{core.fno} · {core.type}
       </div>
       {showVault && (
         <div className="text-xs text-[#7D8C84]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
