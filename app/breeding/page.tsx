@@ -119,13 +119,13 @@ export default function BreedingPage() {
             className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl"
             style={{ fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            Breeding strategy planner
+            Breeding analysis
           </h1>
           <p className="mt-2 max-w-2xl text-[#B7C3BC]">
-            Load a vault by wallet address, pick a strategy, and see which sire/dam pairs give
-            the strongest expected offspring across the 7 esports distances — sorted by
-            predicted stats and breeding ROI. Add a second vault to find cross-breeding pairs
-            with someone else's studs.
+            Load one vault to explore breeding within it, or two to compare cross-vault
+            pairings. This is a "what if" analysis — every male core is treated as a possible
+            sire here regardless of whether it's actually listed for stud right now. For real,
+            actionable studs, see the <a href="/breeding/arena" className="text-[#8CFF6B] underline">Arena</a> page.
           </p>
         </header>
 
@@ -361,6 +361,11 @@ export default function BreedingPage() {
                         {pair.targetCategory && (
                           <span className="rounded-full border border-[#22302A] bg-[#0E1512] px-2 py-0.5 text-[#B7C3BC]">
                             {pair.targetCategory}
+                          </span>
+                        )}
+                        {!pair.sire.inStud && (
+                          <span className="rounded-full border border-[#22302A] bg-[#0E1512] px-2 py-0.5 text-[#7D8C84]">
+                            sire not currently in stud
                           </span>
                         )}
                       </div>

@@ -211,11 +211,30 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T)
  * in a lightweight second pass (distance stats only, deduped across cores
  * that share a parent).
  */
-export async function fetchCores(hids: number[]): Promise<Core[]> {
-  if (hids.length === 0) return [];
+/** Minimal identity info needed before enrichment — from either /mini_bulk (vault cores) or /splicing3/arena_v2 (arena listings). */
+interface CoreBasics {
+  hid: number;
+  name: string;
+  element: string;
+  gender: "male" | "female";
+  type: string;
+  fno: number;
+  vault: string;
+  vaultName: string;
+}
 
-  const [mini, power, splicing] = await Promise.all([
-    postJson<MiniBulkResponse>("/fbike/cores/mini_bulk", { hids }),
+/**
+ * Enriches basic core identity info with power stats, splicing/breeding
+ * availability, and race-history-derived distance category — the shared
+ * pipeline behind both fetchCores() (vault cores, via /mini_bulk) and
+ * fetchArenaCores() (arena listings, via /splicing3/arena_v2), since both
+ * need the same power/splicing/race-history/category enrichment afterward.
+ */
+async function enrichCoreBasics(basics: CoreBasics[]): Promise<Core[]> {
+  if (basics.length === 0) return [];
+  const hids = basics.map((b) => b.hid);
+
+  const [power, splicing] = await Promise.all([
     postJson<PowerBulkResponse>("/fbike/cores/power_bulk", { hids }),
     postJson<SplicingInfoBulkResponse>("/fbike/cores/splicing_info_bulk", { hids }),
   ]);
@@ -226,7 +245,7 @@ export async function fetchCores(hids: number[]): Promise<Core[]> {
     await mapWithConcurrency(hids, 4, async (hid) => [hid, await fetchDistanceStats(hid)] as const)
   );
 
-  const cores = mini.result.map((m): Core => {
+  const cores = basics.map((m): Core => {
     const bikePower = powerByHid.get(m.hid)?.power?.bike;
     const splicingInfo = splicingByHid.get(m.hid);
     const s = splicingInfo?.splice_core ?? null;
@@ -253,7 +272,7 @@ export async function fetchCores(hids: number[]): Promise<Core[]> {
       parents: normalizeHidList(splicingInfo?.parents),
       grandParents: normalizeHidList(splicingInfo?.grand_parents),
       vault: m.vault,
-      vaultName: m.vault_name,
+      vaultName: m.vaultName,
       power: bikePower?.power.fill.normalized ?? 0,
       variance: bikePower?.variance.fill.normalized ?? 0,
       adjOdds: bikePower?.adjodds.fill.normalized ?? 0,
@@ -271,6 +290,24 @@ export async function fetchCores(hids: number[]): Promise<Core[]> {
 
   await fillUnprovenGuessesFromParents(cores, distancesByHid);
   return cores;
+}
+
+export async function fetchCores(hids: number[]): Promise<Core[]> {
+  if (hids.length === 0) return [];
+
+  const mini = await postJson<MiniBulkResponse>("/fbike/cores/mini_bulk", { hids });
+  const basics: CoreBasics[] = mini.result.map((m) => ({
+    hid: m.hid,
+    name: m.name,
+    element: m.element,
+    gender: m.gender,
+    type: m.type,
+    fno: m.fno,
+    vault: m.vault,
+    vaultName: m.vault_name,
+  }));
+
+  return enrichCoreBasics(basics);
 }
 
 /**
@@ -320,6 +357,71 @@ async function fillUnprovenGuessesFromParents(
 export async function fetchVaultCores(vault: string): Promise<Core[]> {
   const hids = await fetchVaultCoreIds(vault);
   return fetchCores(hids);
+}
+
+interface ArenaCoreEntry {
+  hid: number;
+  price_usd: number;
+  name: string;
+  type: string;
+  element: string;
+  gender: "male" | "female";
+  fno: number;
+  vault: string;
+}
+
+interface ArenaResponse {
+  status: string;
+  result: {
+    cores: ArenaCoreEntry[];
+    page: number;
+    limit: number;
+    has_more: boolean;
+  };
+}
+
+export interface ArenaFilter {
+  rvmode?: "bike";
+  use_powerstats?: boolean;
+  adjodds?: { mi: number; mx: number };
+}
+
+/**
+ * Fetches the current public Splice Arena listing — cores anyone has listed
+ * for breeding, either gender, from any vault. Only fetches page 0 (the
+ * default 100-result page): the live site's default filter view returned
+ * has_more: false, but a very active arena could have more pages. Element/
+ * type/gender filters aren't wired up here yet — only the fields confirmed
+ * from the live request are used — so this always returns the full unfiltered
+ * page 0 and any narrowing happens client-side.
+ */
+export async function fetchArenaCoreIds(): Promise<ArenaCoreEntry[]> {
+  const filter: ArenaFilter = { rvmode: "bike", use_powerstats: true, adjodds: { mi: 0, mx: 100 } };
+  const data = await postJson<ArenaResponse>("/fbike/splicing3/arena_v2", { f: filter, search: null });
+  return data.result.cores;
+}
+
+/**
+ * Loads the Splice Arena and enriches every listed core with power stats,
+ * splicing/breeding info, and distance category — same pipeline as vault
+ * cores. `vault` on each result is the real owner's address (not the
+ * viewer's), which is exactly what lets the existing crossVaultOnly pairing
+ * logic treat "my vault vs. the arena" the same way it treats "vault A vs.
+ * vault B".
+ */
+export async function fetchArenaCores(): Promise<Core[]> {
+  const entries = await fetchArenaCoreIds();
+  const basics: CoreBasics[] = entries.map((e) => ({
+    hid: e.hid,
+    name: e.name,
+    element: e.element,
+    gender: e.gender,
+    type: e.type,
+    fno: e.fno,
+    vault: e.vault,
+    vaultName: "", // arena listing doesn't include a vault display name
+  }));
+  return enrichCoreBasics(basics);
 }
 
 export type { Band, BandStrength, DistanceCategory, DistanceStat };

@@ -286,8 +286,21 @@ function estimateOffspringValueUsd(predictedPower: number, market: MarketAssumpt
 }
 
 /** Builds every valid sire x dam pairing from a vault's cores. */
-export function buildCandidatePairs(cores: Core[]): { sire: Core; dam: Core }[] {
-  const sires = cores.filter((c) => c.gender === "male" && c.inStud && c.cycleSplicesRemaining > 0);
+/**
+ * Builds every valid sire x dam pairing from a vault's cores.
+ * requireInStud=true restricts sires to cores actually listed for stud right
+ * now (real, actionable breeding) — false (the default) treats every male as
+ * a hypothetical sire, for pure "what if" strategy analysis regardless of
+ * whether anyone's actually offering to breed that core today.
+ */
+export function buildCandidatePairs(
+  cores: Core[],
+  options?: { requireInStud?: boolean }
+): { sire: Core; dam: Core }[] {
+  const requireInStud = options?.requireInStud ?? false;
+  const sires = cores.filter(
+    (c) => c.gender === "male" && (!requireInStud || (c.inStud && c.cycleSplicesRemaining > 0))
+  );
   const dams = cores.filter((c) => c.gender === "female");
   const pairs: { sire: Core; dam: Core }[] = [];
   for (const sire of sires) {
@@ -307,12 +320,14 @@ export interface RankPairsOptions {
   limit?: number;
   /** When true, drop any pair where sire and dam are owned by the same vault — for cross-vault breeding. */
   crossVaultOnly?: boolean;
+  /** When true, only real in-stud sires are eligible (actionable breeding). Default false = pure "what if" analysis. */
+  requireInStud?: boolean;
 }
 
 export function rankBreedingPairs(cores: Core[], options: RankPairsOptions): BreedingPair[] {
-  const { strategy, targetElement, minPower, market, limit = 10, crossVaultOnly = false } = options;
+  const { strategy, targetElement, minPower, market, limit = 10, crossVaultOnly = false, requireInStud = false } = options;
 
-  const candidates = buildCandidatePairs(cores);
+  const candidates = buildCandidatePairs(cores, { requireInStud });
   const targetCategory = CATEGORY_STRATEGY_MAP[strategy];
 
   const results: BreedingPair[] = candidates
