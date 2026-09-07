@@ -1,15 +1,24 @@
 // lib/dna-breeding.ts
 //
-// Breeding compatibility engine for DNA Racing cores.
-// Ported from the original Streamlit "Breeding Suggestions" tab (Options A/B/C)
-// into plain, typed functions the Next.js app can call from a client or server component.
-//
-// Nothing in this file fetches data — see lib/dna-api.ts for that. Keeping this
-// pure makes it trivial to unit test and to reuse in the esports roster/veto planner.
+// Breeding compatibility engine for DNA Racing cores, targeted at the esports
+// league specifically: stats are bike-mode only (esports races are all bike
+// races) and distance strategies use the classification in distance-strategy.ts
+// (Sprint/Mid/Marathon + hybrids), driven by the 7 real esports distances.
 
-export type Element = "Fire" | "Water" | "Earth" | "Wind" | "Electric" | "Light" | "Dark" | string;
-export type Gender = "M" | "F";
-export type CoreType = "Bike" | "Car" | "Horse" | string;
+import {
+  classifyDistanceProfile,
+  DEFAULT_THRESHOLDS,
+  DISTANCE_CATEGORY_LABELS,
+  type Band,
+  type BandStrength,
+  type DistanceCategory,
+  type DistanceStat,
+  type StrengthThresholds,
+} from "./distance-strategy";
+
+export type Element = "water" | "fire" | "earth" | "air" | string;
+export type Gender = "male" | "female";
+export type CoreType = "genesis" | string;
 
 export interface Core {
   hid: number;
@@ -17,27 +26,76 @@ export interface Core {
   element: Element;
   gender: Gender;
   type: CoreType;
-  familyNumber: number; // "F.No" in the original tool — used for inbreeding avoidance
-  power: number; // PWR
-  variance: number; // VAR
-  adjOdds: number; // ADJ
+  fno: number; // family number — used for inbreeding avoidance
+  vault: string;
+  vaultName: string;
+
+  // Bike-mode power stats, normalized 0-1 (esports races are bike-only).
+  power: number;
+  variance: number;
+  adjOdds: number;
+  racesN: number;
+
+  // Esports distance performance and derived strategy category.
+  allDistances: DistanceStat[];
+  category: DistanceCategory;
+  bands: Record<Band, BandStrength>;
+
+  // Breeding availability.
   inStud: boolean;
-  studPrice: number; // 0 = free stud
-  breedsRemaining: number;
+  priceUsd: number; // splice price in USD, 0 = free
+  cycleSplicesRemaining: number; // mxcycle_splices_n - cycle_splices_n
 }
 
-export interface RacingStatLine {
-  distance: number; // metres, e.g. 1200
-  races: number;
-  winPct: number; // 0-100
-}
+export type BreedingStrategy =
+  | "maximize-power"
+  | "element-focus"
+  | "family-diversification"
+  | "budget"
+  | "gamble"
+  | "sprint"
+  | "mid"
+  | "marathon"
+  | "sprint-mid"
+  | "mid-marathon"
+  | "all-rounder";
 
-export type DistanceCategory = "Sprint" | "Mid-Distance" | "Marathon";
+export const STRATEGY_LABELS: Record<BreedingStrategy, string> = {
+  "maximize-power": "Maximize Power",
+  "element-focus": "Element Focus",
+  "family-diversification": "Family Diversification",
+  budget: "Budget Breeding",
+  gamble: "Gamble — Power Breeding",
+  sprint: "Sprint Specialists",
+  mid: "Mid Specialists",
+  marathon: "Marathon Specialists",
+  "sprint-mid": "Sprint-Mid Hybrids",
+  "mid-marathon": "Mid-Marathon Hybrids",
+  "all-rounder": "All-Rounders",
+};
+
+const CATEGORY_STRATEGY_MAP: Partial<Record<BreedingStrategy, DistanceCategory>> = {
+  sprint: "Sprint",
+  mid: "Mid",
+  marathon: "Marathon",
+  "sprint-mid": "Sprint-Mid",
+  "mid-marathon": "Mid-Marathon",
+  "all-rounder": "All-Rounder",
+};
+
+export const DISTANCE_STRATEGIES: BreedingStrategy[] = [
+  "sprint",
+  "mid",
+  "marathon",
+  "sprint-mid",
+  "mid-marathon",
+  "all-rounder",
+];
 
 export interface BreedingPair {
   sire: Core; // male
   dam: Core; // female
-  score: number; // 0-100, strategy-dependent scale
+  score: number;
   sameElement: boolean;
   sameFamily: boolean;
   predictedOffspring: {
@@ -46,67 +104,15 @@ export interface BreedingPair {
     adjOdds: number;
   };
   cost: number;
-  estimatedValue: number;
-  profit: number;
-  roiPct: number | null; // null when cost is 0 (free stud — ROI is undefined, not infinite)
-  distanceCategory?: DistanceCategory | "Unproven";
-}
-
-export type BreedingStrategy =
-  | "maximize-power"
-  | "element-focus"
-  | "family-diversification"
-  | "budget"
-  | "sprint"
-  | "mid-distance"
-  | "marathon"
-  | "gamble";
-
-const DISTANCE_BANDS: { category: DistanceCategory; min: number; max: number }[] = [
-  { category: "Sprint", min: 900, max: 1300 },
-  { category: "Mid-Distance", min: 1400, max: 1800 },
-  { category: "Marathon", min: 1900, max: 2300 },
-];
-
-/** A core's best distance category, based on its highest win% band with recorded races. */
-export function primaryDistanceCategory(stats: RacingStatLine[]): DistanceCategory | "Unproven" {
-  const raced = stats.filter((s) => s.races > 0);
-  if (raced.length === 0) return "Unproven";
-
-  let best: { category: DistanceCategory; winPct: number } | null = null;
-  for (const band of DISTANCE_BANDS) {
-    const inBand = raced.filter((s) => s.distance >= band.min && s.distance <= band.max);
-    if (inBand.length === 0) continue;
-    const avgWin = inBand.reduce((sum, s) => sum + s.winPct, 0) / inBand.length;
-    if (!best || avgWin > best.winPct) best = { category: band.category, winPct: avgWin };
-  }
-  return best?.category ?? "Unproven";
-}
-
-/** Simple 0-1 normalizer against a vault-wide max, so stat scales don't dominate the score. */
-function normalize(value: number, max: number): number {
-  if (max <= 0) return 0;
-  return Math.min(value / max, 1);
-}
-
-interface NormalizationContext {
-  maxPower: number;
-  maxVariance: number;
-  maxAdjOdds: number;
-}
-
-export function buildNormalizationContext(cores: Core[]): NormalizationContext {
-  return {
-    maxPower: Math.max(1, ...cores.map((c) => c.power)),
-    maxVariance: Math.max(1, ...cores.map((c) => c.variance)),
-    maxAdjOdds: Math.max(1, ...cores.map((c) => c.adjOdds)),
-  };
+  estimatedValueUsd: number;
+  profitUsd: number;
+  roiPct: number | null; // null when cost is 0 — ROI is undefined, not infinite
+  targetCategory?: DistanceCategory;
 }
 
 function predictOffspring(sire: Core, dam: Core) {
-  // Expected offspring stats are modelled as the parent average — the same simplification
-  // used in the original tool. Real on-chain genetics can deviate; treat this as a midpoint
-  // estimate for ranking pairs against each other, not a guaranteed outcome.
+  // Simple midpoint estimate for ranking pairs against each other — not a
+  // guaranteed outcome. Real on-chain genetics can deviate from a flat average.
   return {
     power: (sire.power + dam.power) / 2,
     variance: (sire.variance + dam.variance) / 2,
@@ -118,85 +124,71 @@ function predictOffspring(sire: Core, dam: Core) {
  * Option A — simple compatibility score.
  * Score = Power(40%) + Variance(30%) + AdjOdds(30%) + element bonus + family bonus
  */
-export function scoreSimplePair(sire: Core, dam: Core, ctx: NormalizationContext): number {
-  const p = normalize((sire.power + dam.power) / 2, ctx.maxPower);
-  const v = normalize((sire.variance + dam.variance) / 2, ctx.maxVariance);
-  const a = normalize((sire.adjOdds + dam.adjOdds) / 2, ctx.maxAdjOdds);
+export function scoreSimplePair(sire: Core, dam: Core): number {
+  const power = (sire.power + dam.power) / 2;
+  const variance = (sire.variance + dam.variance) / 2;
+  const adjOdds = (sire.adjOdds + dam.adjOdds) / 2;
 
-  let score = (p * 0.4 + v * 0.3 + a * 0.3) * 100;
+  let score = (power * 0.4 + variance * 0.3 + adjOdds * 0.3) * 100;
 
   if (sire.element === dam.element) score += 10;
-  score += sire.familyNumber !== dam.familyNumber ? 5 : -5;
+  score += sire.fno !== dam.fno ? 5 : -5;
 
   return Math.max(0, Math.round(score * 10) / 10);
 }
 
 /**
- * Distance-focused strategies (sprint / mid-distance / marathon).
- * Score = AvgPower(30%) + AvgVariance(20%) + AvgAdjOdds(20%) + distance match(30%) + element(+10)
+ * Distance-category strategies (Sprint / Mid / Marathon / hybrids / All-Rounder).
+ * Score = Power(30%) + Variance(20%) + AdjOdds(20%) + category match(30%) + element(+10)
  */
-export function scoreDistancePair(
-  sire: Core,
-  dam: Core,
-  sireCategory: DistanceCategory | "Unproven",
-  damCategory: DistanceCategory | "Unproven",
-  targetCategory: DistanceCategory,
-  ctx: NormalizationContext
-): number {
-  const p = normalize((sire.power + dam.power) / 2, ctx.maxPower);
-  const v = normalize((sire.variance + dam.variance) / 2, ctx.maxVariance);
-  const a = normalize((sire.adjOdds + dam.adjOdds) / 2, ctx.maxAdjOdds);
+export function scoreCategoryPair(sire: Core, dam: Core, targetCategory: DistanceCategory): number {
+  const power = (sire.power + dam.power) / 2;
+  const variance = (sire.variance + dam.variance) / 2;
+  const adjOdds = (sire.adjOdds + dam.adjOdds) / 2;
 
-  let distanceScore = 0;
-  if (sireCategory === targetCategory) distanceScore += 15;
-  if (damCategory === targetCategory) distanceScore += 15;
+  let categoryScore = 0;
+  if (sire.category === targetCategory) categoryScore += 15;
+  if (dam.category === targetCategory) categoryScore += 15;
 
-  let score = p * 30 + v * 20 + a * 20 + distanceScore;
+  let score = power * 30 + variance * 20 + adjOdds * 20 + categoryScore;
   if (sire.element === dam.element) score += 10;
 
   return Math.max(0, Math.round(score * 10) / 10);
 }
 
 /**
- * Gamble strategy — ignores distance entirely, leans hard on raw power + variance.
- * Score = AvgPower(50%) + AvgVariance(30%) + AvgAdjOdds(20%) + element(+10)
+ * Gamble strategy — leans hard on raw power + variance, ignoring distance category.
+ * Score = Power(50%) + Variance(30%) + AdjOdds(20%) + element(+10)
  */
-export function scoreGamblePair(sire: Core, dam: Core, ctx: NormalizationContext): number {
-  const p = normalize((sire.power + dam.power) / 2, ctx.maxPower);
-  const v = normalize((sire.variance + dam.variance) / 2, ctx.maxVariance);
-  const a = normalize((sire.adjOdds + dam.adjOdds) / 2, ctx.maxAdjOdds);
+export function scoreGamblePair(sire: Core, dam: Core): number {
+  const power = (sire.power + dam.power) / 2;
+  const variance = (sire.variance + dam.variance) / 2;
+  const adjOdds = (sire.adjOdds + dam.adjOdds) / 2;
 
-  let score = p * 50 + v * 30 + a * 20;
+  let score = power * 50 + variance * 30 + adjOdds * 20;
   if (sire.element === dam.element) score += 10;
 
   return Math.max(0, Math.round(score * 10) / 10);
 }
 
 interface MarketAssumptions {
-  /** Rough floor value of an average offspring, in whatever currency studPrice is denominated in. */
-  baseOffspringValue: number;
-  /** How much estimated value scales per normalized power point above average (0-1 scale). */
-  powerValueMultiplier: number;
+  baseOffspringValueUsd: number;
+  powerValueMultiplierUsd: number;
 }
 
 const DEFAULT_MARKET: MarketAssumptions = {
-  baseOffspringValue: 50,
-  powerValueMultiplier: 150,
+  baseOffspringValueUsd: 5,
+  powerValueMultiplierUsd: 40,
 };
 
-function estimateOffspringValue(
-  predictedPower: number,
-  ctx: NormalizationContext,
-  market: MarketAssumptions = DEFAULT_MARKET
-): number {
-  const normalizedPower = normalize(predictedPower, ctx.maxPower);
-  return Math.round(market.baseOffspringValue + normalizedPower * market.powerValueMultiplier);
+function estimateOffspringValueUsd(predictedPower: number, market: MarketAssumptions = DEFAULT_MARKET): number {
+  return Math.round((market.baseOffspringValueUsd + predictedPower * market.powerValueMultiplierUsd) * 100) / 100;
 }
 
-/** Builds every valid sire x dam pairing from a vault of cores. */
+/** Builds every valid sire x dam pairing from a vault's cores. */
 export function buildCandidatePairs(cores: Core[]): { sire: Core; dam: Core }[] {
-  const sires = cores.filter((c) => c.gender === "M" && c.inStud && c.breedsRemaining > 0);
-  const dams = cores.filter((c) => c.gender === "F");
+  const sires = cores.filter((c) => c.gender === "male" && c.inStud && c.cycleSplicesRemaining > 0);
+  const dams = cores.filter((c) => c.gender === "female");
   const pairs: { sire: Core; dam: Core }[] = [];
   for (const sire of sires) {
     for (const dam of dams) {
@@ -210,72 +202,53 @@ export function buildCandidatePairs(cores: Core[]): { sire: Core; dam: Core }[] 
 export interface RankPairsOptions {
   strategy: BreedingStrategy;
   targetElement?: Element;
-  minPower?: number;
-  racingStatsByHid?: Record<number, RacingStatLine[]>;
+  minPower?: number; // 0-1 normalized
   market?: MarketAssumptions;
   limit?: number;
 }
 
-/**
- * Ranks candidate pairs for a chosen strategy and returns the top N (default 10),
- * matching the "Top 5 / Top 10 per category" behaviour of the original tool.
- */
 export function rankBreedingPairs(cores: Core[], options: RankPairsOptions): BreedingPair[] {
-  const { strategy, targetElement, minPower, racingStatsByHid = {}, market, limit = 10 } = options;
+  const { strategy, targetElement, minPower, market, limit = 10 } = options;
 
-  const ctx = buildNormalizationContext(cores);
   const candidates = buildCandidatePairs(cores);
-
-  const distanceStrategyMap: Partial<Record<BreedingStrategy, DistanceCategory>> = {
-    sprint: "Sprint",
-    "mid-distance": "Mid-Distance",
-    marathon: "Marathon",
-  };
+  const targetCategory = CATEGORY_STRATEGY_MAP[strategy];
 
   const results: BreedingPair[] = candidates
     .filter((c) => {
       if (targetElement && c.sire.element !== targetElement && c.dam.element !== targetElement) return false;
       if (minPower !== undefined && (c.sire.power + c.dam.power) / 2 < minPower) return false;
-      if (strategy === "family-diversification" && c.sire.familyNumber === c.dam.familyNumber) return false;
-      if (strategy === "budget" && c.sire.studPrice > 0) return false;
+      if (strategy === "family-diversification" && c.sire.fno === c.dam.fno) return false;
+      if (strategy === "budget" && c.sire.priceUsd > 0) return false;
       return true;
     })
     .map(({ sire, dam }) => {
-      const targetCategory = distanceStrategyMap[strategy];
       let score: number;
-      let distanceCategory: DistanceCategory | "Unproven" | undefined;
-
       if (targetCategory) {
-        const sireCategory = primaryDistanceCategory(racingStatsByHid[sire.hid] ?? []);
-        const damCategory = primaryDistanceCategory(racingStatsByHid[dam.hid] ?? []);
-        score = scoreDistancePair(sire, dam, sireCategory, damCategory, targetCategory, ctx);
-        distanceCategory = sireCategory === targetCategory ? sireCategory : damCategory;
+        score = scoreCategoryPair(sire, dam, targetCategory);
       } else if (strategy === "gamble") {
-        score = scoreGamblePair(sire, dam, ctx);
+        score = scoreGamblePair(sire, dam);
       } else {
-        // maximize-power, element-focus, family-diversification, budget all rank on the
-        // simple compatibility score — the strategy only changes the *filter*, not the formula.
-        score = scoreSimplePair(sire, dam, ctx);
+        score = scoreSimplePair(sire, dam);
       }
 
       const predictedOffspring = predictOffspring(sire, dam);
-      const cost = sire.studPrice;
-      const estimatedValue = estimateOffspringValue(predictedOffspring.power, ctx, market);
-      const profit = estimatedValue - cost;
-      const roiPct = cost > 0 ? Math.round((profit / cost) * 1000) / 10 : null;
+      const cost = sire.priceUsd;
+      const estimatedValueUsd = estimateOffspringValueUsd(predictedOffspring.power, market);
+      const profitUsd = Math.round((estimatedValueUsd - cost) * 100) / 100;
+      const roiPct = cost > 0 ? Math.round((profitUsd / cost) * 1000) / 10 : null;
 
       const pair: BreedingPair = {
         sire,
         dam,
         score,
         sameElement: sire.element === dam.element,
-        sameFamily: sire.familyNumber === dam.familyNumber,
+        sameFamily: sire.fno === dam.fno,
         predictedOffspring,
         cost,
-        estimatedValue,
-        profit,
+        estimatedValueUsd,
+        profitUsd,
         roiPct,
-        distanceCategory,
+        targetCategory,
       };
       return pair;
     })
@@ -283,21 +256,21 @@ export function rankBreedingPairs(cores: Core[], options: RankPairsOptions): Bre
     .slice(0, limit);
 
   if (strategy === "maximize-power") {
-    // Original tool surfaced only pairs with 85%+ of the vault's max predicted power.
-    const maxPredicted = Math.max(1, ...results.map((r) => r.predictedOffspring.power));
+    const maxPredicted = Math.max(0.0001, ...results.map((r) => r.predictedOffspring.power));
     return results.filter((r) => r.predictedOffspring.power >= maxPredicted * 0.85);
   }
 
   return results;
 }
 
-export const STRATEGY_LABELS: Record<BreedingStrategy, string> = {
-  "maximize-power": "Maximize Power",
-  "element-focus": "Element Focus",
-  "family-diversification": "Family Diversification",
-  budget: "Budget Breeding",
-  sprint: "Sprint Specialists",
-  "mid-distance": "Mid-Distance Specialists",
-  marathon: "Marathon Specialists",
-  gamble: "Gamble — Power Breeding",
+// Re-exported so page.tsx and dna-api.ts only need to import from one place.
+export {
+  classifyDistanceProfile,
+  DEFAULT_THRESHOLDS,
+  DISTANCE_CATEGORY_LABELS,
+  type Band,
+  type BandStrength,
+  type DistanceCategory,
+  type DistanceStat,
+  type StrengthThresholds,
 };
