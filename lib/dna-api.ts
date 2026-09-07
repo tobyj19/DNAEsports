@@ -25,6 +25,28 @@ import { ESPORTS_DISTANCES } from "./distance-strategy";
 const API_BASE = "https://api.dnaracing.run";
 const ESPORTS_DISTANCE_SET = new Set(ESPORTS_DISTANCES);
 
+/**
+ * The docs only show `parents`/`grand_parents` as `null` for genesis cores —
+ * the populated shape for spliced cores isn't documented. This normalizes
+ * whatever comes back (a flat array of hids, an object of hid values, or
+ * anything else) into a safe number[] or null, so a shape mismatch degrades
+ * to "no lineage data" instead of crashing.
+ */
+function normalizeHidList(value: unknown): number[] | null {
+  if (value == null) return null;
+  if (Array.isArray(value)) {
+    const nums = value.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    return nums.length > 0 ? nums : null;
+  }
+  if (typeof value === "object") {
+    const nums = Object.values(value as Record<string, unknown>).filter(
+      (v): v is number => typeof v === "number" && Number.isFinite(v)
+    );
+    return nums.length > 0 ? nums : null;
+  }
+  return null;
+}
+
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
@@ -82,8 +104,8 @@ interface PowerBulkResponse {
 
 interface SplicingInfoResult {
   hid: number;
-  parents: number[] | null;
-  grand_parents: number[] | null;
+  parents: unknown; // shape beyond "null for genesis cores" isn't documented — normalized below
+  grand_parents: unknown;
   splice_core: {
     cycle_splices_n: number;
     in_stud: boolean;
@@ -191,8 +213,8 @@ export async function fetchCores(hids: number[]): Promise<Core[]> {
       gender: m.gender,
       type: m.type,
       fno: m.fno, // display number only — see assessLineage() in dna-breeding.ts for real lineage
-      parents: splicingInfo?.parents ?? null,
-      grandParents: splicingInfo?.grand_parents ?? null,
+      parents: normalizeHidList(splicingInfo?.parents),
+      grandParents: normalizeHidList(splicingInfo?.grand_parents),
       vault: m.vault,
       vaultName: m.vault_name,
       power: bikePower?.power.fill.normalized ?? 0,

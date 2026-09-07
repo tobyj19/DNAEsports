@@ -65,13 +65,20 @@ export interface LineageAssessment {
  * have no lineage data at all, so they're treated as unrelated by default.
  */
 export function assessLineage(sire: Core, dam: Core): LineageAssessment {
-  if (sire.parents?.includes(dam.hid) || dam.parents?.includes(sire.hid)) {
+  // Defensive Array.isArray checks: even though dna-api.ts normalizes this
+  // shape, this stays defensive in case a Core is ever constructed another way.
+  const sireParents = Array.isArray(sire.parents) ? sire.parents : null;
+  const damParents = Array.isArray(dam.parents) ? dam.parents : null;
+  const sireGrandParents = Array.isArray(sire.grandParents) ? sire.grandParents : null;
+  const damGrandParents = Array.isArray(dam.grandParents) ? dam.grandParents : null;
+
+  if (sireParents?.includes(dam.hid) || damParents?.includes(sire.hid)) {
     return { relation: "parent-offspring", inbred: true };
   }
-  if (sire.parents && dam.parents && sire.parents.some((p) => dam.parents!.includes(p))) {
+  if (sireParents && damParents && sireParents.some((p) => damParents.includes(p))) {
     return { relation: "sibling", inbred: true };
   }
-  if (sire.grandParents && dam.grandParents && sire.grandParents.some((g) => dam.grandParents!.includes(g))) {
+  if (sireGrandParents && damGrandParents && sireGrandParents.some((g) => damGrandParents.includes(g))) {
     return { relation: "cousin", inbred: true };
   }
   return { relation: "unrelated", inbred: false };
