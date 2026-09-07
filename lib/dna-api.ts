@@ -13,6 +13,8 @@
 // than depending on coreProfile.ts, so it stays self-contained.
 
 import {
+  bandToCategory,
+  bestGuessBand,
   classifyDistanceProfile,
   type Band,
   type BandStrength,
@@ -200,7 +202,14 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T)
  * Fetches full breeding-relevant data for a batch of core IDs: basic info,
  * bike power stats, splicing/breeding availability, and race-history-derived
  * distance category. Race history is fetched per-core (no bulk endpoint for
- * it), capped at 8 concurrent requests.
+ * it), capped at 4 concurrent requests with automatic retry on rate limits.
+ *
+ * Cores that land in "Developing" get a best-guess Sprint/Mid/Marathon lean
+ * from their own (sub-threshold) results. Cores that land in "Unproven" (no
+ * race history at all — usually a freshly spliced core) get a best-guess
+ * lean inferred from their parents' combined race history instead, fetched
+ * in a lightweight second pass (distance stats only, deduped across cores
+ * that share a parent).
  */
 export async function fetchCores(hids: number[]): Promise<Core[]> {
   if (hids.length === 0) return [];
@@ -217,12 +226,22 @@ export async function fetchCores(hids: number[]): Promise<Core[]> {
     await mapWithConcurrency(hids, 4, async (hid) => [hid, await fetchDistanceStats(hid)] as const)
   );
 
-  return mini.result.map((m): Core => {
+  const cores = mini.result.map((m): Core => {
     const bikePower = powerByHid.get(m.hid)?.power?.bike;
     const splicingInfo = splicingByHid.get(m.hid);
     const s = splicingInfo?.splice_core ?? null;
     const allDistances = distancesByHid.get(m.hid) ?? [];
     const { category, bands } = classifyDistanceProfile(allDistances);
+
+    let guessedCategory: DistanceCategory | null = null;
+    let guessSource: Core["guessSource"] = null;
+    if (category === "Developing") {
+      const band = bestGuessBand(allDistances);
+      if (band) {
+        guessedCategory = bandToCategory(band);
+        guessSource = "own-data";
+      }
+    }
 
     return {
       hid: m.hid,
@@ -241,12 +260,60 @@ export async function fetchCores(hids: number[]): Promise<Core[]> {
       racesN: bikePower?.races_n ?? 0,
       allDistances,
       category,
+      guessedCategory,
+      guessSource,
       bands,
       inStud: s?.in_stud ?? false,
       priceUsd: s?.price_usd ?? 0,
       cycleSplicesRemaining: s ? Math.max(0, s.mxcycle_splices_n - s.cycle_splices_n) : 0,
     };
   });
+
+  await fillUnprovenGuessesFromParents(cores, distancesByHid);
+  return cores;
+}
+
+/**
+ * Second pass: for any "Unproven" core with known parent hids, fetch (or
+ * reuse, if already loaded) each parent's race-history distance stats,
+ * combine both parents' results, and classify the combination to produce a
+ * best-guess category. Mutates the given cores in place.
+ */
+async function fillUnprovenGuessesFromParents(
+  cores: Core[],
+  alreadyFetched: Map<number, DistanceStat[]>
+): Promise<void> {
+  const needsGuess = cores.filter((c) => c.category === "Unproven" && c.parents && c.parents.length > 0);
+  if (needsGuess.length === 0) return;
+
+  const parentHidsNeeded = new Set<number>();
+  for (const core of needsGuess) {
+    for (const parentHid of core.parents!) {
+      if (!alreadyFetched.has(parentHid)) parentHidsNeeded.add(parentHid);
+    }
+  }
+
+  const freshlyFetched = new Map(
+    await mapWithConcurrency(Array.from(parentHidsNeeded), 4, async (hid) => [hid, await fetchDistanceStats(hid)] as const)
+  );
+
+  const getParentDistances = (hid: number): DistanceStat[] => alreadyFetched.get(hid) ?? freshlyFetched.get(hid) ?? [];
+
+  for (const core of needsGuess) {
+    const combined = core.parents!.flatMap((parentHid) => getParentDistances(parentHid));
+    if (combined.length === 0) continue;
+
+    const { category: parentCategory } = classifyDistanceProfile(combined);
+    if (parentCategory === "Unproven") continue; // parents have no data either — nothing to infer
+
+    if (parentCategory === "Developing") {
+      const band = bestGuessBand(combined);
+      core.guessedCategory = band ? bandToCategory(band) : null;
+    } else {
+      core.guessedCategory = parentCategory;
+    }
+    core.guessSource = core.guessedCategory ? "parents" : null;
+  }
 }
 
 /** Loads every core owned by a vault address in one call. */

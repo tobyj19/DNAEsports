@@ -6,6 +6,8 @@
 // (Sprint/Mid/Marathon + hybrids), driven by the 7 real esports distances.
 
 import {
+  bandToCategory,
+  bestGuessBand,
   classifyDistanceProfile,
   DEFAULT_THRESHOLDS,
   DISTANCE_CATEGORY_LABELS,
@@ -19,6 +21,7 @@ import {
 export type Element = "water" | "fire" | "earth" | "air" | string;
 export type Gender = "male" | "female";
 export type CoreType = "genesis" | string;
+export type CategoryGuessSource = "own-data" | "parents" | null;
 
 export interface Core {
   hid: number;
@@ -40,6 +43,16 @@ export interface Core {
   allDistances: DistanceStat[];
   category: DistanceCategory;
   bands: Record<Band, BandStrength>;
+  /**
+   * A best-guess Sprint/Mid/Marathon lean when `category` is "Developing"
+   * (own race data, but nothing clears the strength threshold) or "Unproven"
+   * (no race data — usually a freshly spliced core). "own-data" means it's
+   * this core's own (sub-threshold) results; "parents" means it's inferred
+   * from its parents' combined race history. Null when there's nothing to
+   * go on at all (Unproven with no known parents).
+   */
+  guessedCategory: DistanceCategory | null;
+  guessSource: CategoryGuessSource;
 
   // Lineage — null for genesis cores (no parent data exists for them).
   parents: number[] | null;
@@ -355,6 +368,8 @@ export function rankBreedingPairs(cores: Core[], options: RankPairsOptions): Bre
 
 // Re-exported so page.tsx and dna-api.ts only need to import from one place.
 export {
+  bandToCategory,
+  bestGuessBand,
   classifyDistanceProfile,
   DEFAULT_THRESHOLDS,
   DISTANCE_CATEGORY_LABELS,

@@ -466,7 +466,7 @@ function CoreBrowserTable({ cores, view, showVault }: { cores: Core[]; view: "st
               <td className="px-3 py-2 text-[#B7C3BC]">{c.gender}</td>
               <td className="px-3 py-2 text-[#B7C3BC]">{c.element}</td>
               <td className="px-3 py-2 text-[#B7C3BC]">{c.type}</td>
-              <td className="px-3 py-2 text-[#B7C3BC]">{c.category}</td>
+              <td className="px-3 py-2 text-[#B7C3BC]">{formatCategory(c)}</td>
               <td className="px-3 py-2 text-[#8CFF6B]">{Math.round(c.power * 1000) / 10}%</td>
               <td className="px-3 py-2 text-[#B7C3BC]">{Math.round(c.variance * 1000) / 10}%</td>
               <td className="px-3 py-2 text-[#B7C3BC]">{Math.round(c.adjOdds * 1000) / 10}%</td>
@@ -506,7 +506,7 @@ function ParentCard({ label, core, showVault }: { label: string; core: Core; sho
         className="mt-1 inline-block rounded-full border border-[#22302A] bg-[#0E1512] px-2 py-0.5 text-xs text-[#B7C3BC]"
         title={DISTANCE_CATEGORY_LABELS[core.category]}
       >
-        {core.category}
+        {formatCategory(core)}
       </div>
       <div className="mt-2">
         <StatRow label="PWR" value={core.power} pct />
@@ -515,6 +515,13 @@ function ParentCard({ label, core, showVault }: { label: string; core: Core; sho
       </div>
     </div>
   );
+}
+
+/** "Sprint" as-is; "Developing (guess: Sprint)" or "Unproven (guess: Mid, from parents)" when a category is a weak/no-data label but a guess exists. */
+function formatCategory(core: Core): string {
+  if (!core.guessedCategory) return core.category;
+  const source = core.guessSource === "parents" ? ", from parents" : "";
+  return `${core.category} (guess: ${core.guessedCategory}${source})`;
 }
 
 function StatRow({ label, value, pct }: { label: string; value: number; pct?: boolean }) {

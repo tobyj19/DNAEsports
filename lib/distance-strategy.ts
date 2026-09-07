@@ -124,3 +124,29 @@ export const DISTANCE_CATEGORY_LABELS: Record<DistanceCategory, string> = {
   Developing: "Developing — no band cleared yet",
   Unproven: "Unproven — no esports race history",
 };
+
+/** Sprint/Mid/Marathon as a plain DistanceCategory label (no hybrids). */
+export function bandToCategory(band: Band): DistanceCategory {
+  return band === "sprint" ? "Sprint" : band === "mid" ? "Mid" : "Marathon";
+}
+
+/**
+ * Picks whichever band a core is relatively strongest in — win% and top-3%
+ * blended evenly — WITHOUT requiring it to clear the "strong" thresholds.
+ * Used as a best-guess lean for cores that land in "Developing" (some race
+ * data, but nothing clears the bar) so they get a useful hint instead of a
+ * flat "not sure yet" label. Returns null if there's no race data at all.
+ */
+export function bestGuessBand(distances: DistanceStat[]): Band | null {
+  const bandKeys: Band[] = ["sprint", "mid", "marathon"];
+  let best: { band: Band; score: number } | null = null;
+
+  for (const band of bandKeys) {
+    const agg = aggregateBand(distances, band);
+    if (agg.races === 0) continue;
+    const score = agg.winPct * 0.5 + agg.topThreePct * 0.5;
+    if (!best || score > best.score) best = { band, score };
+  }
+
+  return best?.band ?? null;
+}
