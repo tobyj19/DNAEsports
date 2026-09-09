@@ -10,11 +10,14 @@
 import { useMemo, useState } from "react";
 import type { EsportsCoreRecord } from "@/lib/esports-hstats";
 import {
+  allQualifyingCores,
+  computeGroupPowerAverages,
   DEFAULT_FILTERS,
   KNOWN_GATE_COUNTS,
   PAYOUT_LABELS,
   rankCores,
   type DiscoveryFilters,
+  type GroupPowerAverages,
   type PayoutFamily,
   type RankedCore,
 } from "@/lib/esports-discovery";
@@ -27,6 +30,11 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
 
   const winLeaderboard = useMemo(() => rankCores(cores, filters, "win_p", 25), [cores, filters]);
   const teamScoreLeaderboard = useMemo(() => rankCores(cores, filters, "team_win_p", 25), [cores, filters]);
+
+  const qualifyingPool = useMemo(() => allQualifyingCores(cores, filters), [cores, filters]);
+  const winTop25Avg = useMemo(() => computeGroupPowerAverages(winLeaderboard), [winLeaderboard]);
+  const teamScoreTop25Avg = useMemo(() => computeGroupPowerAverages(teamScoreLeaderboard), [teamScoreLeaderboard]);
+  const poolAvg = useMemo(() => computeGroupPowerAverages(qualifyingPool), [qualifyingPool]);
 
   return (
     <div className="min-h-screen bg-[#0B0F0E] text-[#E9F2ED]">
@@ -149,6 +157,8 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
           </p>
         )}
 
+        <PowerProfileSummary winTop25Avg={winTop25Avg} teamScoreTop25Avg={teamScoreTop25Avg} poolAvg={poolAvg} />
+
         <div className="grid gap-8 lg:grid-cols-2">
           <LeaderboardTable title="Top 25 — Core Win %" entries={winLeaderboard} metric="win_p" />
           <LeaderboardTable title="Top 25 — Team Score %" entries={teamScoreLeaderboard} metric="team_win_p" />
@@ -186,6 +196,9 @@ function LeaderboardTable({
                 <th className="px-3 py-2">Win %</th>
                 <th className="px-3 py-2">Team %</th>
                 <th className="px-3 py-2">Avg finish</th>
+                <th className="px-3 py-2">PWR</th>
+                <th className="px-3 py-2">VAR</th>
+                <th className="px-3 py-2">ADJ</th>
               </tr>
             </thead>
             <tbody>
@@ -209,6 +222,9 @@ function LeaderboardTable({
                   <td className="px-3 py-2 text-[#7D8C84]">
                     {c.avgFinishPct !== null ? `${Math.round(c.avgFinishPct)}/100` : "—"}
                   </td>
+                  <td className="px-3 py-2 text-[#B7C3BC]">{formatPct(c.power)}</td>
+                  <td className="px-3 py-2 text-[#B7C3BC]">{formatPct(c.variance)}</td>
+                  <td className="px-3 py-2 text-[#B7C3BC]">{formatPct(c.adjOdds)}</td>
                 </tr>
               ))}
             </tbody>
@@ -216,5 +232,63 @@ function LeaderboardTable({
         </div>
       )}
     </section>
+  );
+}
+
+function formatPct(value: number | null): string {
+  return value !== null ? `${Math.round(value * 1000) / 10}%` : "—";
+}
+
+/**
+ * "What type of core is winning here" — compares the average power/variance/
+ * adjodds of each Top 25 list against the average across every core that
+ * simply qualifies (meets minRaces) for the current filter, so it's clear
+ * whether winners actually skew higher on some stat or not.
+ */
+function PowerProfileSummary({
+  winTop25Avg,
+  teamScoreTop25Avg,
+  poolAvg,
+}: {
+  winTop25Avg: GroupPowerAverages;
+  teamScoreTop25Avg: GroupPowerAverages;
+  poolAvg: GroupPowerAverages;
+}) {
+  if (poolAvg.count === 0) return null;
+
+  return (
+    <section className="mb-8 rounded-lg border border-[#22302A] bg-[#121815] p-5">
+      <h2
+        className="mb-1 text-sm font-semibold uppercase tracking-wide text-[#7D8C84]"
+        style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+      >
+        What's winning here
+      </h2>
+      <p className="mb-4 text-xs text-[#7D8C84]">
+        Average bike-mode power stats — Top 25 lists vs. every core that simply qualifies (meets
+        the min-races filter) for this Gates/Distance/Payout combination.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-3" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+        <PowerProfileRow label="All qualifying cores" avg={poolAvg} accent={false} />
+        <PowerProfileRow label="Top 25 — Core Win %" avg={winTop25Avg} accent />
+        <PowerProfileRow label="Top 25 — Team Score %" avg={teamScoreTop25Avg} accent />
+      </div>
+    </section>
+  );
+}
+
+function PowerProfileRow({ label, avg, accent }: { label: string; avg: GroupPowerAverages; accent: boolean }) {
+  const color = accent ? "text-[#8CFF6B]" : "text-[#B7C3BC]";
+  return (
+    <div>
+      <div className="mb-1 text-xs text-[#7D8C84]">
+        {label} <span className="text-[#54615A]">({avg.count})</span>
+      </div>
+      <div className="flex gap-4 text-sm">
+        <span className={color}>PWR {formatPct(avg.avgPower)}</span>
+        <span className={color}>VAR {formatPct(avg.avgVariance)}</span>
+        <span className={color}>ADJ {formatPct(avg.avgAdjOdds)}</span>
+      </div>
+    </div>
   );
 }

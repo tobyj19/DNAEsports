@@ -137,6 +137,9 @@ export interface RankedCore extends AggregateStats {
   gender: "male" | "female";
   teamName: string;
   group: string;
+  power: number | null;
+  variance: number | null;
+  adjOdds: number | null;
 }
 
 /** Filters to cores meeting minRaces, then sorts by the chosen metric and returns the top N. */
@@ -160,9 +163,50 @@ export function rankCores(
       gender: core.gender,
       teamName: core.teamName,
       group: core.group,
+      power: core.power,
+      variance: core.variance,
+      adjOdds: core.adjOdds,
     });
   }
 
   ranked.sort((a, b) => b[sortBy] - a[sortBy]);
   return ranked.slice(0, limit);
+}
+
+export interface GroupPowerAverages {
+  count: number; // how many cores had power data (not null) among those averaged
+  avgPower: number | null;
+  avgVariance: number | null;
+  avgAdjOdds: number | null;
+}
+
+/** Mean power/variance/adjodds across a set of ranked cores — null-safe, averages only over cores that actually have power data. */
+export function computeGroupPowerAverages(cores: RankedCore[]): GroupPowerAverages {
+  const withPower = cores.filter((c) => c.power !== null);
+  if (withPower.length === 0) return { count: 0, avgPower: null, avgVariance: null, avgAdjOdds: null };
+
+  const sum = withPower.reduce(
+    (acc, c) => ({
+      power: acc.power + (c.power ?? 0),
+      variance: acc.variance + (c.variance ?? 0),
+      adjOdds: acc.adjOdds + (c.adjOdds ?? 0),
+    }),
+    { power: 0, variance: 0, adjOdds: 0 }
+  );
+
+  return {
+    count: withPower.length,
+    avgPower: sum.power / withPower.length,
+    avgVariance: sum.variance / withPower.length,
+    avgAdjOdds: sum.adjOdds / withPower.length,
+  };
+}
+
+/**
+ * Same as rankCores but returns every core meeting minRaces (not just the top
+ * N) — used to compute a "whole qualifying population" baseline to compare
+ * the top-25's power averages against.
+ */
+export function allQualifyingCores(cores: EsportsCoreRecord[], filters: DiscoveryFilters): RankedCore[] {
+  return rankCores(cores, filters, "win_p", Number.MAX_SAFE_INTEGER);
 }

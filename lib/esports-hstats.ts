@@ -184,13 +184,61 @@ export interface EsportsCoreRecord {
   teamName: string;
   group: string;
   data: SlimHstatsData;
+  // Bike-mode power stats, normalized 0-1, from /fbike/cores/power_bulk — null if unavailable.
+  power: number | null;
+  variance: number | null;
+  adjOdds: number | null;
+}
+
+interface PowerFill {
+  fill: { normalized: number; per: number };
+}
+
+interface PowerBulkEntry {
+  hid: number;
+  power?: {
+    bike?: { power: PowerFill; variance: PowerFill; adjodds: PowerFill };
+  };
+}
+
+interface PowerBulkResponse {
+  status: string;
+  result: PowerBulkEntry[];
+}
+
+/** Fetches bike-mode power/variance/adjodds for a batch of hids, chunked to stay well under any request-size limit. */
+async function fetchPowerStats(
+  hids: number[],
+  chunkSize = 200
+): Promise<Map<number, { power: number; variance: number; adjOdds: number }>> {
+  const map = new Map<number, { power: number; variance: number; adjOdds: number }>();
+  const chunks: number[][] = [];
+  for (let i = 0; i < hids.length; i += chunkSize) chunks.push(hids.slice(i, i + chunkSize));
+
+  await Promise.all(
+    chunks.map(async (chunk) => {
+      const data = await postJson<PowerBulkResponse>("/fbike/cores/power_bulk", { hids: chunk });
+      for (const entry of data.result) {
+        const bike = entry.power?.bike;
+        if (!bike) continue;
+        map.set(entry.hid, {
+          power: bike.power.fill.normalized,
+          variance: bike.variance.fill.normalized,
+          adjOdds: bike.adjodds.fill.normalized,
+        });
+      }
+    })
+  );
+
+  return map;
 }
 
 /**
  * The full population scan: every rostered core across every team, enriched
- * with its hstats data. This is a genuinely heavy batch job (800+ individual
- * requests) — callers should cache the result (e.g. Next.js route-level
- * revalidate) rather than re-running this per page view.
+ * with its hstats data and bike-mode power stats. This is a genuinely heavy
+ * batch job (800+ individual hstats requests, though power stats come in a
+ * handful of bulk calls) — callers should cache the result (e.g. Next.js
+ * route-level revalidate) rather than re-running this per page view.
  */
 export async function loadAllEsportsCoreData(concurrency = 4): Promise<EsportsCoreRecord[]> {
   const teams = await fetchEsportsTeams();
@@ -204,22 +252,40 @@ export async function loadAllEsportsCoreData(concurrency = 4): Promise<EsportsCo
 
   const uniqueHids = Array.from(hidToTeam.keys());
 
-  const results = await mapWithConcurrency(uniqueHids, concurrency, async (hid) => {
-    const stats = await fetchHstats(hid, "all");
-    if (!stats) return null;
-    const teamInfo = hidToTeam.get(hid)!;
-    const record: EsportsCoreRecord = {
-      hid: stats.hid,
-      name: stats.name,
-      element: stats.element,
-      type: stats.type,
-      gender: stats.gender,
-      teamName: teamInfo.teamName,
-      group: teamInfo.group,
-      data: slimHstatsData(stats.data),
-    };
-    return record;
-  });
+  const [hstatsResults, powerByHid] = await Promise.all([
+    mapWithConcurrency(uniqueHids, concurrency, async (hid) => {
+      const stats = await fetchHstats(hid, "all");
+      if (!stats) return null;
+      const teamInfo = hidToTeam.get(hid)!;
+      const record: EsportsCoreRecord = {
+        hid: stats.hid,
+        name: stats.name,
+        element: stats.element,
+        type: stats.type,
+        gender: stats.gender,
+        teamName: teamInfo.teamName,
+        group: teamInfo.group,
+        data: slimHstatsData(stats.data),
+        power: null, // filled in below, once fetchPowerStats resolves
+        variance: null,
+        adjOdds: null,
+      };
+      return record;
+    }),
+    fetchPowerStats(uniqueHids),
+  ]);
 
-  return results.filter((r): r is EsportsCoreRecord => r !== null);
+  const records = hstatsResults.filter((r): r is EsportsCoreRecord => r !== null);
+
+  // Merge in power stats fetched in parallel above.
+  for (const record of records) {
+    const p = powerByHid.get(record.hid);
+    if (p) {
+      record.power = p.power;
+      record.variance = p.variance;
+      record.adjOdds = p.adjOdds;
+    }
+  }
+
+  return records;
 }
