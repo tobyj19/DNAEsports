@@ -56,6 +56,8 @@ export interface PowerFilter {
   element?: string;
   type?: string;
   gender?: string;
+  /** Which race mode(s) the thresholds above are checked against. Omitted/empty = check all three (any-mode match). */
+  modes?: RaceMode[];
 }
 
 export const DEFAULT_FILTER: PowerFilter = {
@@ -182,6 +184,7 @@ export async function scanRange(start: number, end: number, filter: PowerFilter)
     if (filter.gender && mini.gender !== filter.gender) continue;
 
     const powerRaw = powerByHid.get(hid);
+    const modesToCheck = filter.modes && filter.modes.length > 0 ? filter.modes : RACE_MODES;
     const modes: Partial<Record<RaceMode, ModeStats>> = {};
     const matchedModes: RaceMode[] = [];
     for (const mode of RACE_MODES) {
@@ -194,7 +197,7 @@ export async function scanRange(start: number, end: number, filter: PowerFilter)
         racesN: m.races_n,
       };
       modes[mode] = stats;
-      if (passesFilter(stats, filter)) matchedModes.push(mode);
+      if (modesToCheck.includes(mode) && passesFilter(stats, filter)) matchedModes.push(mode);
     }
     if (matchedModes.length === 0) continue;
 

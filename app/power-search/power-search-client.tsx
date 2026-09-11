@@ -16,6 +16,13 @@ const MAX_DISPLAY = 500;
 
 const MODE_LABEL: Record<RaceMode, string> = { bike: "Bike", car: "Car", horse: "Horse" };
 
+// Confirmed against live game data (lib/data/leaderboards-full-game.json) — the
+// game currently has exactly these 4 elements. "trainer" is a real `type` value
+// but is excluded here since trainers never race and have no power stats, so
+// they're already filtered out of every search result.
+const ELEMENT_OPTIONS = ["fire", "water", "earth", "metal"];
+const TYPE_OPTIONS = ["genesis", "morphed", "freak", "xclass"];
+
 function buildChunks(start: number, end: number, size: number): Array<[number, number]> {
   const chunks: Array<[number, number]> = [];
   for (let s = start; s <= end; s += size) {
@@ -30,6 +37,7 @@ function bestPower(core: FoundCore): number {
 
 export default function PowerSearchClient() {
   const [filter, setFilter] = useState<PowerFilter>(DEFAULT_FILTER);
+  const [modeSelection, setModeSelection] = useState<"all" | RaceMode>("all");
   const [running, setRunning] = useState(false);
   const [scannedChunks, setScannedChunks] = useState(0);
   const [totalChunks, setTotalChunks] = useState(0);
@@ -67,7 +75,11 @@ export default function PowerSearchClient() {
           const res = await fetch("/api/core-power-search", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ start, end, filter }),
+            body: JSON.stringify({
+              start,
+              end,
+              filter: { ...filter, modes: modeSelection === "all" ? undefined : [modeSelection] },
+            }),
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data?.error ?? "Scan chunk failed");
@@ -94,6 +106,7 @@ export default function PowerSearchClient() {
 
   const sorted = useMemo(() => [...matches].sort((a, b) => bestPower(b) - bestPower(a)), [matches]);
   const shown = sorted.slice(0, MAX_DISPLAY);
+  const modesToShow: RaceMode[] = modeSelection === "all" ? RACE_MODES : [modeSelection];
   const progressPct = totalChunks > 0 ? Math.round((scannedChunks / totalChunks) * 100) : 0;
 
   function downloadCSV() {
@@ -151,9 +164,34 @@ export default function PowerSearchClient() {
     <div>
       <div className="rounded-lg border border-line bg-panel p-4 mb-6">
         <h2 className="text-sm font-medium text-[#9CA6B0] mb-3">
-          Filters — a core matches if <span className="text-white">any</span> race mode (bike/car/horse) falls
-          within all three ranges below
+          Filters — a core matches if{" "}
+          {modeSelection === "all" ? (
+            <>
+              <span className="text-white">any</span> race mode (bike/car/horse)
+            </>
+          ) : (
+            <span className="text-white">{MODE_LABEL[modeSelection]}</span>
+          )}{" "}
+          falls within all three ranges below
         </h2>
+
+        <div className="mb-4">
+          <label className="block text-xs text-[#9CA6B0] mb-1">Race mode</label>
+          <div className="inline-flex rounded border border-line overflow-hidden">
+            {(["all", ...RACE_MODES] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setModeSelection(m)}
+                className={`px-3 py-1.5 text-sm transition-colors ${
+                  modeSelection === m ? "bg-mint text-ink font-medium" : "bg-ink text-[#9CA6B0] hover:text-white"
+                }`}
+              >
+                {m === "all" ? "All modes" : MODE_LABEL[m]}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-4">
           <DualRangeSlider
             label="Power"
@@ -181,15 +219,17 @@ export default function PowerSearchClient() {
             onChange={(v) => updateFilter("minRaces", v)}
             max={undefined}
           />
-          <TextField
-            label="Element (optional)"
+          <SelectField
+            label="Element"
             value={filter.element ?? ""}
             onChange={(v) => updateFilter("element", v || undefined)}
+            options={ELEMENT_OPTIONS}
           />
-          <TextField
-            label="Type (optional)"
+          <SelectField
+            label="Type"
             value={filter.type ?? ""}
             onChange={(v) => updateFilter("type", v || undefined)}
+            options={TYPE_OPTIONS}
           />
           <div>
             <label className="block text-xs text-[#9CA6B0] mb-1">Gender</label>
@@ -254,7 +294,7 @@ export default function PowerSearchClient() {
                 <th className="text-left px-3 py-2">HID</th>
                 <th className="text-left px-3 py-2">Name</th>
                 <th className="text-left px-3 py-2">Element/Type</th>
-                {RACE_MODES.map((mode) => (
+                {modesToShow.map((mode) => (
                   <th key={mode} className="text-left px-3 py-2">
                     {MODE_LABEL[mode]} PWR/VAR/ADJ (races)
                   </th>
@@ -269,7 +309,7 @@ export default function PowerSearchClient() {
                   <td className="px-3 py-2 capitalize text-[#9CA6B0]">
                     {c.element ?? "—"}/{c.type}
                   </td>
-                  {RACE_MODES.map((mode) => {
+                  {modesToShow.map((mode) => {
                     const stats = c.modes[mode];
                     const isMatch = c.matchedModes.includes(mode);
                     return (
@@ -390,24 +430,32 @@ function NumberField({
   );
 }
 
-function TextField({
+function SelectField({
   label,
   value,
   onChange,
+  options,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  options: string[];
 }) {
   return (
     <div>
       <label className="block text-xs text-[#9CA6B0] mb-1">{label}</label>
-      <input
-        type="text"
+      <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="bg-ink border border-line rounded px-2 py-1.5 text-sm w-full capitalize"
-      />
+      >
+        <option value="">Any</option>
+        {options.map((opt) => (
+          <option key={opt} value={opt} className="capitalize">
+            {opt}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
