@@ -14,3 +14,54 @@ body {
 table {
   border-collapse: collapse;
 }
+
+/* Dual-thumb range slider (two overlapping <input type="range"> elements) —
+   used by the Power Search filters. Each input's own thumb is clickable;
+   the track background is transparent so only the shared fill bar (drawn
+   separately, behind both inputs) shows through. */
+.dual-range {
+  position: relative;
+  height: 1.25rem;
+}
+.dual-range input[type="range"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  height: 1.25rem;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  pointer-events: none;
+}
+.dual-range input[type="range"]::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 1.25rem;
+}
+.dual-range input[type="range"]::-moz-range-track {
+  background: transparent;
+  height: 1.25rem;
+}
+.dual-range input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #4ADE80;
+  border: 2px solid #0B0D10;
+  cursor: pointer;
+  margin-top: -6px;
+  position: relative;
+  z-index: 2;
+}
+.dual-range input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #4ADE80;
+  border: 2px solid #0B0D10;
+  cursor: pointer;
+}
