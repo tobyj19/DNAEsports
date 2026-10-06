@@ -1,29 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SIM_DISTANCES, THIN_SAMPLE, simulateRace, type SimCore, type SimResult } from "@/lib/raceSim";
 
-const MAX_FIELD = 14;
+const MIN_GATES = 2;
+const MAX_GATES = 14;
 const CHUNK = 20;
+const MAX_MATCHES = 8;
 const MUTED = "text-[#9CA6B0]";
+
+export interface DirectoryCore {
+  hid: number;
+  name: string;
+  team: string; // esports team, or the vault it was added from
+}
 
 function pct(v: number): string {
   if (v === 0) return "0%";
   if (v < 0.001) return "<0.1%";
   return `${(v * 100).toFixed(1)}%`;
-}
-
-/** Splits the input box into vault addresses and core IDs; anything else is reported back. */
-function parseInput(text: string): { vaults: string[]; hids: number[]; bad: string[] } {
-  const vaults: string[] = [];
-  const hids: number[] = [];
-  const bad: string[] = [];
-  for (const token of text.split(/[\s,;]+/).filter(Boolean)) {
-    if (/^0x[a-fA-F0-9]{40}$/.test(token)) vaults.push(token.toLowerCase());
-    else if (/^#?\d+$/.test(token)) hids.push(Number(token.replace("#", "")));
-    else bad.push(token);
-  }
-  return { vaults, hids, bad };
 }
 
 async function postJson<T>(body: unknown): Promise<T> {
@@ -37,87 +32,117 @@ async function postJson<T>(body: unknown): Promise<T> {
   return data as T;
 }
 
-export default function RaceSimClient() {
-  const [input, setInput] = useState("");
-  const [pool, setPool] = useState<SimCore[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
+export default function RaceSimClient({ directory }: { directory: DirectoryCore[] }) {
+  const [gates, setGates] = useState(8);
   const [distance, setDistance] = useState(1600);
   const [paidOnly, setPaidOnly] = useState(false);
-  const [field, setField] = useState<number[]>([]);
+  const [slots, setSlots] = useState<(number | null)[]>(() => new Array(8).fill(null));
+  const [pool, setPool] = useState<Record<number, SimCore>>({});
+  const [pending, setPending] = useState<number[]>([]);
+  const [extra, setExtra] = useState<DirectoryCore[]>([]); // cores added from a vault
+  const [query, setQuery] = useState("");
+  const [vault, setVault] = useState("");
+  const [vaultBusy, setVaultBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [odds, setOdds] = useState<Record<number, string>>({});
   const [results, setResults] = useState<SimResult[]>([]);
-  const cancelRef = useRef(false);
 
-  const byHid = useMemo(() => new Map(pool.map((c) => [c.hid, c])), [pool]);
   const est = (c: SimCore) => (paidOnly ? c.paid : c.all);
-  const usable = useMemo(() => pool.filter((c) => (paidOnly ? c.paid : c.all) != null), [pool, paidOnly]);
+  const known = useMemo(() => {
+    const seen = new Set<number>();
+    return [...extra, ...directory].filter((c) => (seen.has(c.hid) ? false : (seen.add(c.hid), true)));
+  }, [extra, directory]);
+  const nameOf = (hid: number) => pool[hid]?.name ?? known.find((c) => c.hid === hid)?.name ?? `Core ${hid}`;
 
-  async function load() {
-    const { vaults, hids, bad } = parseInput(input);
-    if (vaults.length === 0 && hids.length === 0) {
-      setError("Enter at least one vault address (0x…) or core ID.");
+  const filled = slots.filter((h): h is number => h != null);
+  const hasEmptyGate = filled.length < gates;
+
+  function changeGates(n: number) {
+    setGates(n);
+    setSlots((s) => (n <= s.length ? s.slice(0, n) : [...s, ...new Array(n - s.length).fill(null)]));
+  }
+
+  async function loadCores(hids: number[]) {
+    const todo = hids.filter((h) => !pool[h] && !pending.includes(h));
+    if (todo.length === 0) return;
+    setPending((p) => [...p, ...todo]);
+    try {
+      for (let i = 0; i < todo.length; i += CHUNK) {
+        const data = await postJson<{ cores: SimCore[] }>({ hids: todo.slice(i, i + CHUNK) });
+        setPool((p) => ({ ...p, ...Object.fromEntries(data.cores.map((c) => [c.hid, c])) }));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't load that core.");
+      setSlots((s) => s.map((h) => (h != null && todo.includes(h) ? null : h)));
+    } finally {
+      setPending((p) => p.filter((h) => !todo.includes(h)));
+    }
+  }
+
+  function addToGate(hid: number) {
+    setError(null);
+    setQuery("");
+    setSlots((s) => {
+      if (s.includes(hid)) return s;
+      const i = s.indexOf(null);
+      if (i === -1) return s;
+      const next = [...s];
+      next[i] = hid;
+      return next;
+    });
+    loadCores([hid]);
+  }
+
+  async function addVault() {
+    const v = vault.trim().toLowerCase();
+    if (!/^0x[a-f0-9]{40}$/.test(v)) {
+      setError("That doesn't look like a vault address (0x followed by 40 characters).");
       return;
     }
-    setLoading(true);
-    setError(bad.length ? `Skipped, not a vault address or core ID: ${bad.join(", ")}` : null);
-    cancelRef.current = false;
+    setVaultBusy(true);
+    setError(null);
     try {
-      const all = new Set<number>(hids);
-      for (const vault of vaults) {
-        const data = await postJson<{ hids: number[] }>({ vault });
-        data.hids.forEach((h) => all.add(h));
-      }
-      const have = new Set(pool.map((c) => c.hid));
-      const todo = Array.from(all).filter((h) => !have.has(h));
-      if (todo.length === 0) {
-        setError((e) => e ?? "Those cores are already loaded.");
+      const { hids } = await postJson<{ hids: number[] }>({ vault: v });
+      if (hids.length === 0) {
+        setError("That vault has no cores.");
         return;
       }
-      setProgress({ done: 0, total: todo.length });
-      for (let i = 0; i < todo.length && !cancelRef.current; i += CHUNK) {
-        const batch = todo.slice(i, i + CHUNK);
-        const data = await postJson<{ cores: SimCore[] }>({ hids: batch });
-        setPool((p) => [...p, ...data.cores.filter((c) => !p.some((x) => x.hid === c.hid))]);
-        setProgress({ done: Math.min(i + CHUNK, todo.length), total: todo.length });
+      for (let i = 0; i < hids.length; i += CHUNK) {
+        const data = await postJson<{ cores: SimCore[] }>({ hids: hids.slice(i, i + CHUNK) });
+        setPool((p) => ({ ...p, ...Object.fromEntries(data.cores.map((c) => [c.hid, c])) }));
+        setExtra((x) => [...x, ...data.cores.map((c) => ({ hid: c.hid, name: c.name, team: `vault ${v.slice(0, 6)}…${v.slice(-4)}` }))]);
       }
-      setInput("");
+      setVault("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong loading cores.");
+      setError(e instanceof Error ? e.message : "Couldn't load that vault.");
     } finally {
-      setLoading(false);
-      setProgress(null);
+      setVaultBusy(false);
     }
   }
 
-  function mostRaced(): number[] {
-    return [...usable]
-      .sort((a, b) => est(b)!.byDistance[distance].races - est(a)!.byDistance[distance].races)
-      .slice(0, 8)
-      .map((c) => c.hid);
-  }
-
-  // Keep the field valid as cores load, or when the paid-only switch removes a core's data
-  useEffect(() => {
-    const ok = new Set(usable.map((c) => c.hid));
-    setField((f) => {
-      const kept = f.filter((h) => ok.has(h));
-      if (kept.length >= 2 || usable.length < 2) return kept.length === f.length ? f : kept;
-      return mostRaced();
-    });
+  // Search: name or team from the known list, or any core ID in the game
+  const q = query.trim().toLowerCase().replace(/^#/, "");
+  const matches = useMemo(() => {
+    if (q.length < 2) return [];
+    const taken = new Set(filled);
+    const list = known
+      .filter((c) => !taken.has(c.hid) && (c.name.toLowerCase().includes(q) || String(c.hid).startsWith(q) || c.team.toLowerCase().includes(q)))
+      .slice(0, MAX_MATCHES);
+    const asId = /^\d+$/.test(q) ? Number(q) : null;
+    if (asId && !taken.has(asId) && !list.some((c) => c.hid === asId)) {
+      list.unshift({ hid: asId, name: pool[asId]?.name ?? `Core #${asId}`, team: "load by ID" });
+    }
+    return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usable]);
+  }, [q, known, slots, pool]);
 
   const entrants = useMemo(
     () =>
-      field
-        .map((h) => byHid.get(h))
-        .filter((c): c is SimCore => !!c && est(c) != null)
-        .map((c) => ({ core: c, d: est(c)!.byDistance[distance] })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [field, byHid, distance, paidOnly]
+      slots
+        .map((hid, i) => ({ gate: i + 1, core: hid != null ? pool[hid] : undefined }))
+        .filter((e): e is { gate: number; core: SimCore } => !!e.core && (paidOnly ? e.core.paid : e.core.all) != null)
+        .map((e) => ({ ...e, d: (paidOnly ? e.core.paid : e.core.all)!.byDistance[distance] })),
+    [slots, pool, distance, paidOnly]
   );
 
   useEffect(() => {
@@ -134,131 +159,121 @@ export default function RaceSimClient() {
   const hi = Math.max(...entrants.map((e) => e.d.timeSec + 2.4 * e.d.sdSec));
   const x = (t: number) => ((hi - t) / (hi - lo || 1)) * 100;
 
-  const addable = usable.filter((c) => !field.includes(c.hid)).sort((a, b) => a.name.localeCompare(b.name));
   const topWin = results[0]?.win || 1;
-  const fav = results[0] ? byHid.get(results[0].hid) : undefined;
+  const favName = results[0] ? nameOf(results[0].hid) : "";
   const thinNames = entrants.filter((e) => e.d.races < THIN_SAMPLE).map((e) => e.core.name);
 
   return (
     <div>
-      {/* Load cores */}
+      {/* Race setup */}
       <div className="rounded-lg border border-line bg-panel p-4 mb-6">
-        <label htmlFor="sim-input" className={`block text-xs ${MUTED} mb-1`}>
-          Vault addresses or core IDs, separated by spaces, commas or new lines
-        </label>
-        <textarea
-          id="sim-input"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          rows={2}
-          placeholder="0x59a3c4292c752dbccd3d2d49955dd65868e45b8a 24167 22239"
-          className="bg-ink border border-line rounded px-2 py-1.5 text-sm w-full font-mono mb-3"
-        />
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={load}
-            disabled={loading}
-            className="px-4 py-2 rounded bg-mint text-ink text-sm font-medium hover:opacity-90 disabled:opacity-50"
-          >
-            {loading ? "Loading…" : pool.length ? "Add cores" : "Load cores"}
-          </button>
-          {loading && (
-            <button
-              onClick={() => (cancelRef.current = true)}
-              className="px-4 py-2 rounded border border-line text-sm hover:bg-ink transition-colors"
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-3 mb-4">
+          <div>
+            <label htmlFor="sim-gates" className={`block text-xs ${MUTED} mb-1`}>Gates</label>
+            <select
+              id="sim-gates"
+              value={gates}
+              onChange={(e) => changeGates(Number(e.target.value))}
+              className="bg-ink border border-line rounded px-2 py-1.5 text-sm"
             >
-              Stop
-            </button>
-          )}
-          {pool.length > 0 && !loading && (
-            <button
-              onClick={() => {
-                setPool([]);
-                setField([]);
-                setOdds({});
-              }}
-              className="px-4 py-2 rounded border border-line text-sm hover:bg-ink transition-colors"
-            >
-              Clear all
-            </button>
-          )}
-          <span className={`text-xs ${MUTED}`}>
-            {pool.length > 0 ? `${pool.length} cores loaded` : "Add your own vault, then an opponent's, to race them against each other."}
-          </span>
-        </div>
-        {progress && (
-          <div className="mt-3">
-            <div className="h-2 rounded bg-ink overflow-hidden mb-1">
-              <div className="h-full bg-mint transition-all" style={{ width: `${(progress.done / progress.total) * 100}%` }} />
-            </div>
-            <p className={`text-xs ${MUTED}`}>
-              Race history loaded for {progress.done} of {progress.total} cores
-            </p>
+              {Array.from({ length: MAX_GATES - MIN_GATES + 1 }, (_, i) => i + MIN_GATES).map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
           </div>
-        )}
+          <div>
+            <span className={`block text-xs ${MUTED} mb-1`}>Distance</span>
+            <div className="inline-flex flex-wrap rounded border border-line overflow-hidden">
+              {SIM_DISTANCES.map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setDistance(d)}
+                  aria-pressed={d === distance}
+                  className={`px-3 py-1.5 text-sm transition-colors ${d === distance ? "bg-mint text-ink font-medium" : "hover:bg-ink"}`}
+                >
+                  {d}m
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm pb-1.5 cursor-pointer">
+            <input type="checkbox" checked={paidOnly} onChange={(e) => setPaidOnly(e.target.checked)} className="accent-[#4ADE80]" />
+            Paid races only
+            <span className={`text-xs ${MUTED}`}>(closer to the game&apos;s own VAR, fewer races per core)</span>
+          </label>
+        </div>
+
+        <label htmlFor="sim-search" className={`block text-xs ${MUTED} mb-1`}>
+          Add a core to the next empty gate: search by name or team, or type any core ID
+        </label>
+        <div className="relative max-w-xl">
+          <input
+            id="sim-search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && matches[0] && hasEmptyGate) addToGate(matches[0].hid);
+            }}
+            disabled={!hasEmptyGate}
+            placeholder={hasEmptyGate ? "e.g. Housewife, or 22575" : "Every gate is filled. Clear one or add gates."}
+            autoComplete="off"
+            className="bg-ink border border-line rounded px-2 py-1.5 text-sm w-full disabled:opacity-50"
+          />
+          {hasEmptyGate && q.length >= 2 && (
+            <ul className="absolute z-10 left-0 right-0 mt-1 rounded border border-line bg-ink shadow-lg max-h-72 overflow-auto">
+              {matches.length === 0 && <li className={`px-3 py-2 text-sm ${MUTED}`}>No core found. Try its core ID.</li>}
+              {matches.map((c) => (
+                <li key={c.hid}>
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => addToGate(c.hid)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-panel flex justify-between gap-3"
+                  >
+                    <span>{c.name} <span className={MUTED}>#{c.hid}</span></span>
+                    <span className={`${MUTED} truncate`}>{c.team}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <details className="mt-3">
+          <summary className={`text-xs ${MUTED} cursor-pointer`}>Can&apos;t find a core by name? Add a vault&apos;s cores to the search</summary>
+          <div className="flex flex-wrap gap-3 mt-2">
+            <input
+              aria-label="Vault address"
+              value={vault}
+              onChange={(e) => setVault(e.target.value)}
+              placeholder="0x…"
+              className="bg-ink border border-line rounded px-2 py-1.5 text-sm font-mono flex-1 min-w-0 max-w-xl"
+            />
+            <button onClick={addVault} disabled={vaultBusy} className="px-3 py-1.5 rounded border border-line text-sm hover:bg-ink transition-colors disabled:opacity-50">
+              {vaultBusy ? "Loading…" : "Add vault"}
+            </button>
+          </div>
+          <p className={`text-xs ${MUTED} mt-1`}>Name search covers cores rostered on an esports team. Any other core needs its ID or its vault.</p>
+        </details>
         {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
       </div>
 
-      {usable.length < 2 && pool.length > 0 && !loading && (
-        <p className={`text-sm ${MUTED} mb-6`}>
-          Fewer than two loaded cores have {paidOnly ? "paid " : ""}bike races at the esports distances. Load more cores
-          {paidOnly ? " or turn off paid races only" : ""}.
-        </p>
-      )}
-
-      {usable.length >= 2 && (
+      {(
         <>
-          {/* Race settings */}
-          <div className="flex flex-wrap items-end gap-x-6 gap-y-3 mb-6">
-            <div>
-              <span className={`block text-xs ${MUTED} mb-1`}>Distance</span>
-              <div className="inline-flex flex-wrap rounded border border-line overflow-hidden">
-                {SIM_DISTANCES.map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => setDistance(d)}
-                    aria-pressed={d === distance}
-                    className={`px-3 py-1.5 text-sm transition-colors ${d === distance ? "bg-mint text-ink font-medium" : "hover:bg-panel"}`}
-                  >
-                    {d}m
-                  </button>
-                ))}
-              </div>
-            </div>
-            <label className="flex items-center gap-2 text-sm pb-1.5 cursor-pointer">
-              <input type="checkbox" checked={paidOnly} onChange={(e) => setPaidOnly(e.target.checked)} className="accent-[#4ADE80]" />
-              Paid races only
-              <span className={`text-xs ${MUTED}`}>(closer to the game&apos;s own VAR, fewer races per core)</span>
-            </label>
-          </div>
-
-          {/* Field */}
           <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
             <h2 className="text-lg font-semibold tracking-tight">
-              Field <span className={`text-sm font-normal ${MUTED}`}>{entrants.length} gates at {distance}m</span>
+              Field <span className={`text-sm font-normal ${MUTED}`}>{filled.length} of {gates} gates filled · {distance}m</span>
             </h2>
-            <div className="flex flex-wrap items-end gap-3">
-              <select
-                aria-label="Add a core to the field"
-                value=""
-                disabled={field.length >= MAX_FIELD || addable.length === 0}
-                onChange={(e) => {
-                  const h = Number(e.target.value);
-                  if (h) setField((f) => [...f, h]);
+            {filled.length > 0 && (
+              <button
+                onClick={() => {
+                  setSlots(new Array(gates).fill(null));
+                  setOdds({});
                 }}
-                className="bg-ink border border-line rounded px-2 py-1.5 text-sm max-w-full disabled:opacity-50"
+                className="px-3 py-1.5 rounded border border-line text-sm hover:bg-panel transition-colors"
               >
-                <option value="">{field.length >= MAX_FIELD ? `Field is full (${MAX_FIELD})` : "Add a core…"}</option>
-                {addable.map((c) => (
-                  <option key={c.hid} value={c.hid}>
-                    {c.name} ({est(c)!.byDistance[distance].races} races here, PWR {est(c)!.byDistance[distance].power.toFixed(1)})
-                  </option>
-                ))}
-              </select>
-              <button onClick={() => setField(mostRaced())} className="px-3 py-1.5 rounded border border-line text-sm hover:bg-panel transition-colors">
-                8 most-raced here
+                Clear all gates
               </button>
-            </div>
+            )}
           </div>
 
           <div className={`flex flex-wrap gap-x-5 gap-y-1 text-xs ${MUTED} mb-2`}>
@@ -272,6 +287,7 @@ export default function RaceSimClient() {
             <table className="w-full text-sm min-w-[760px]">
               <thead className={`bg-panel ${MUTED} text-xs`}>
                 <tr>
+                  <th className="text-left px-3 py-2">Gate</th>
                   <th className="text-left px-3 py-2">Core</th>
                   <th className="text-right px-3 py-2">Races here</th>
                   <th className="text-right px-3 py-2">Typical</th>
@@ -283,11 +299,38 @@ export default function RaceSimClient() {
                 </tr>
               </thead>
               <tbody>
-                {entrants.map(({ core, d }) => {
+                {slots.map((hid, i) => {
+                  const gate = i + 1;
+                  const clear = () => setSlots((s) => s.map((h, k) => (k === i ? null : h)));
+                  const entrant = entrants.find((e) => e.gate === gate);
+                  if (!entrant) {
+                    const loading = hid != null && !pool[hid];
+                    return (
+                      <tr key={gate} className="border-t border-line">
+                        <td className={`px-3 py-2 tabular-nums ${MUTED}`}>{gate}</td>
+                        <td colSpan={6} className={`px-3 py-2 ${MUTED}`}>
+                          {hid == null
+                            ? "Empty. Search above to fill this gate."
+                            : loading
+                              ? `Loading race history for ${nameOf(hid)}…`
+                              : `${nameOf(hid)} has no ${paidOnly ? "paid " : ""}bike races at the esports distances, so it is left out of the race.`}
+                        </td>
+                        <td className="px-2 py-2 text-right">
+                          {hid != null && (
+                            <button onClick={clear} aria-label={`Clear gate ${gate}`} className={`px-2 py-1 rounded border border-line ${MUTED} hover:text-white`}>
+                              ✕
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  }
+                  const { core, d } = entrant;
                   const slow = d.timeSec + 1.2816 * d.sdSec;
                   const fast = d.timeSec - 1.2816 * d.sdSec;
                   return (
-                    <tr key={core.hid} className="border-t border-line">
+                    <tr key={gate} className="border-t border-line">
+                      <td className="px-3 py-2 tabular-nums">{gate}</td>
                       <td className="px-3 py-2">
                         <div className="font-medium">{core.name}</div>
                         <div className={`text-xs ${MUTED}`}>#{core.hid}{core.type ? ` · ${core.type}` : ""}</div>
@@ -327,10 +370,9 @@ export default function RaceSimClient() {
                       </td>
                       <td className="px-2 py-2 text-right">
                         <button
-                          onClick={() => setField((f) => f.filter((h) => h !== core.hid))}
-                          disabled={entrants.length <= 2}
-                          aria-label={`Remove ${core.name}`}
-                          className={`px-2 py-1 rounded border border-line ${MUTED} hover:text-white disabled:opacity-40`}
+                          onClick={clear}
+                          aria-label={`Clear gate ${gate}, ${core.name}`}
+                          className={`px-2 py-1 rounded border border-line ${MUTED} hover:text-white`}
                         >
                           ✕
                         </button>
@@ -348,12 +390,13 @@ export default function RaceSimClient() {
           </p>
 
           {/* Results */}
-          {results.length >= 2 && fav && (
+          {results.length >= 2 && (
             <>
               <h2 className="text-lg font-semibold tracking-tight mb-3">Simulated results</h2>
               <p className="rounded-lg border border-line bg-panel px-4 py-3 text-sm mb-3">
-                At {distance}m, <span className="text-white font-medium">{fav.name}</span> wins most often at {pct(results[0].win)},
+                At {distance}m, <span className="text-white font-medium">{favName}</span> wins most often at {pct(results[0].win)},
                 against a {pct(1 / results.length)} chance for an average core in a {results.length}-gate race.
+                {results.length < gates && ` Only filled gates are raced, so this is a ${results.length}-gate race, not ${gates}.`}
                 {thinNames.length > 0 && (
                   <span className="text-amber"> Treat {thinNames.join(", ")} with caution: fewer than {THIN_SAMPLE} races at this distance.</span>
                 )}
@@ -377,7 +420,7 @@ export default function RaceSimClient() {
                       const edge = o >= 1 ? r.win * o : null;
                       return (
                         <tr key={r.hid} className="border-t border-line">
-                          <td className="px-3 py-2">{byHid.get(r.hid)?.name}</td>
+                          <td className="px-3 py-2">{nameOf(r.hid)}</td>
                           <td className="px-3 py-2">
                             <div className="flex items-center gap-2">
                               <div className="h-2.5 rounded-sm bg-mint" style={{ width: `${Math.max(1, (r.win / topWin) * 110)}px` }} />
