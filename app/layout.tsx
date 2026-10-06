@@ -22,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/cores" className="hover:text-white transition-colors">Cores</Link>
               <Link href="/power-search" className="hover:text-white transition-colors">Power Search</Link>
               <Link href="/map-fit" className="hover:text-white transition-colors">Map Fit</Link>
+              <Link href="/race-sim" className="hover:text-white transition-colors">Race Sim</Link>
             </div>
           </nav>
         </header>
