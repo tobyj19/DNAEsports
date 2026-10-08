@@ -1,3 +1,4 @@
+import { BenchmarkNote } from "../core/[hid]/ui";
 import { buildCoreBrowserData } from "@/lib/coreBrowser";
 import RaceSimClient, { type DirectoryCore } from "./race-sim-client";
 
@@ -20,6 +21,7 @@ export default async function RaceSimPage() {
         run 20,000 times. PWR and VAR are estimated for each distance from real bike-mode race times, since
         the game only publishes one number per core across all distances.
       </p>
+      <BenchmarkNote className="mb-6 max-w-2xl" />
       <RaceSimClient directory={directory} />
     </div>
   );

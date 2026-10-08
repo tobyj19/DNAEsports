@@ -147,3 +147,14 @@ export function formatDuration(ms: number): string {
   const hours = totalHours % 24;
   return days > 0 ? `${days}d ${hours}h` : `${hours}h`;
 }
+
+/** Shown wherever our own PWR/VAR estimates appear, so they're never mistaken for official numbers. */
+export function BenchmarkNote({ className = "" }: { className?: string }) {
+  return (
+    <p className={`rounded-xl border border-amber/30 bg-amber/10 px-3 py-2 text-xs text-amber ${className}`}>
+      <span className="font-semibold">DNA Analytics benchmark</span> — these PWR / VAR figures are our own
+      estimates from race times, fitted against official ratings (typically within ~1.7 PWR). They are not
+      official DNA Racing numbers.
+    </p>
+  );
+}

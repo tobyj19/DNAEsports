@@ -5,7 +5,7 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import type { EstimateSet } from "@/lib/raceSim";
 import { SIM_DISTANCES, THIN_SAMPLE, hasCalibration, type SimMode } from "@/lib/raceSim";
 import type { CoreModeInfo } from "@/lib/coreInfo";
-import { Card } from "./ui";
+import { BenchmarkNote, Card } from "./ui";
 
 const PWR_COLOR = "#FB923C";
 const VAR_COLOR = "#A3E635";
@@ -53,6 +53,7 @@ export default function Estimates({
   return (
     <>
       <Card title={`Est. PWR & VAR by distance · ${mode}`} right={toggle}>
+        <BenchmarkNote className="mb-4" />
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
           <Summary label="Est. PWR" value={est.power} color={PWR_COLOR} />
           <Summary label="Official PWR" value={official.powerPct} />
@@ -121,7 +122,8 @@ export default function Estimates({
           </table>
         </div>
         <p className="mt-3 text-xs text-muted">
-          Estimates on the game&apos;s 0–100 scale, worked out from race times vs the field average (same model as Race Sim).
+          Estimates on the game&apos;s 0–100 scale, worked out from race times vs the field average (same model as Race Sim),
+          fitted against every core with an official {mode} rating.
           <span className="text-amber"> •</span> = under {THIN_SAMPLE} races at that distance, so it leans on the core&apos;s
           all-distance form. Official numbers look to be paid-races only — try the Paid switch to compare.
         </p>

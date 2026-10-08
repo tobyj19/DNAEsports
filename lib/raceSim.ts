@@ -3,27 +3,27 @@
 // Per-distance PWR / VAR estimates for a core, worked out from its race times
 // in one mode (bike / car / horse), plus the race simulation the Race Sim page runs.
 //
-// How the estimates work (calibrated Oct 2026 against 32 cores that have
-// official numbers):
+// These are DNA Analytics' own estimates — our benchmark — not official DNA
+// Racing numbers. How they work:
 //   - Every race time is turned into "% slower or faster than the game-wide
 //     average time at that distance and mode".
 //   - PWR  = a straight-line fit of that % against the game's official power.
-//            All-distance estimate lands within ~0.9 points of the official.
 //   - VAR  = how spread out a core's times are *within* each distance, divided
 //            by the typical spread at that distance (short races are noisier:
-//            ~1.9% at 1000m vs ~0.95% at 2200m), then a straight-line fit
-//            against official variance. Lands within ~5 points.
+//            ~1.75% at 1000m vs ~0.75% at 2200m), then a straight-line fit
+//            against official variance.
 //   - Thin samples lean on the core's all-distance form, so 2 races at a
 //     distance can't produce an extreme number on their own.
 //
-// Bike is the original calibration above. Car and horse use the same method,
-// fitted Oct 2026 against every core with official car / horse numbers (see
-// lib/data/mode-calibration.json for the fitted values).
+// Fitted Oct 2026 (lib/data/mode-calibration.json) from a crawl of every core's
+// race history against every core with an official rating in that mode:
+// bike n=9,310, car n=2,527, horse n=3,341. All-distance PWR lands within ~1.7
+// points of the official number on average; VAR within ~8-11. (The earlier bike
+// fit, from 32 cores, read ~4.3 points high on average.)
 //
-// The official numbers appear to be computed from paid races only, so the
-// page offers a paid-only switch; both versions are computed here.
+// The official numbers may be computed from paid races only, so the page
+// offers a paid-only switch; both versions are computed here.
 
-import popAvgTimes from "./data/population-avg-times.json";
 import modeCalibration from "./data/mode-calibration.json";
 import { getRaceHistory, type RaceHistoryEntry } from "./api";
 import { ESPORTS_DISTANCES } from "./distance-strategy";
@@ -41,22 +41,11 @@ interface ModeCalibration {
   varSlope: number; // per 1.0x the typical spread
 }
 
-const BIKE: ModeCalibration = {
-  pop: Object.fromEntries(
-    Object.entries(popAvgTimes as Record<string, { avgTime: number }>).map(([d, v]) => [Number(d), v.avgTime])
-  ),
-  typicalSdPct: { 1000: 1.92, 1200: 1.59, 1400: 1.47, 1600: 1.39, 1800: 1.19, 2000: 0.92, 2200: 0.95 },
-  pwrIntercept: 80.5,
-  pwrSlope: -5.02,
-  varIntercept: -0.2,
-  varSlope: 76.3,
-};
-
 const toNumKeys = (o: Record<string, number>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [Number(k), v]));
 const fitted = modeCalibration as Partial<Record<SimMode, Omit<ModeCalibration, "pop" | "typicalSdPct"> & { pop: Record<string, number>; typicalSdPct: Record<string, number> }>>;
 
-const CALIBRATION: Partial<Record<SimMode, ModeCalibration>> = { bike: BIKE };
-for (const mode of ["car", "horse"] as const) {
+const CALIBRATION: Partial<Record<SimMode, ModeCalibration>> = {};
+for (const mode of ["bike", "car", "horse"] as const) {
   const f = fitted[mode];
   if (f) CALIBRATION[mode] = { ...f, pop: toNumKeys(f.pop), typicalSdPct: toNumKeys(f.typicalSdPct) };
 }
