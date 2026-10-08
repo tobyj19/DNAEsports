@@ -22,7 +22,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "distances", label: "Win rate by distance" },
   { id: "family", label: "Family" },
 ];
-const NOTES_MAX = 280;
 const MIN_RACES_FOR_BEST = 5;
 const MARKET_URL = "https://market.dnaracing.run/asset/core";
 const OFFICIAL_URL = "https://fbike.dnaracing.run/core";
@@ -82,7 +81,6 @@ export default function CoreProfileClient({ info, initialMode }: { info: CoreInf
           ))}
         </nav>
 
-        <Notes hid={info.hid} />
 
         <div className="flex flex-col gap-1 text-xs text-muted">
           <Link href="/core-search" className="hover:text-white">← Back to Core Search</Link>
@@ -508,39 +506,6 @@ function CoreLink({ core, role, mode }: { core: CoreRef | null; role?: string; m
       </div>
       <MiniPower stats={core.power[mode]} />
     </Link>
-  );
-}
-
-function Notes({ hid }: { hid: number }) {
-  const key = `core-notes:${hid}`;
-  const [text, setText] = useState("");
-
-  useEffect(() => {
-    try {
-      setText(localStorage.getItem(key) ?? "");
-    } catch {
-      // storage blocked — notes just won't persist
-    }
-  }, [key]);
-
-  function update(v: string) {
-    setText(v);
-    try {
-      if (v) localStorage.setItem(key, v);
-      else localStorage.removeItem(key);
-    } catch {}
-  }
-
-  return (
-    <Card title="Notes" right={<span className="text-[10px] text-muted">{text.length}/{NOTES_MAX}</span>}>
-      <textarea
-        value={text}
-        onChange={(e) => update(e.target.value.slice(0, NOTES_MAX))}
-        placeholder="Private notes about this core — saved in this browser."
-        rows={4}
-        className="w-full resize-none rounded-xl border border-white/[0.07] bg-black/20 p-2 text-sm placeholder:text-faint focus:border-white/20 focus:outline-none"
-      />
-    </Card>
   );
 }
 
