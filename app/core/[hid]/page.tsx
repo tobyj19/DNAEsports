@@ -16,7 +16,7 @@ function parseHid(raw: string): number | null {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const hid = parseHid(params.hid);
   const info = hid ? await getCoreInfo(hid) : null;
-  return { title: info ? `${info.name} #${info.hid} · DNA Esports Companion` : "Core not found" };
+  return { title: info ? `${info.name} #${info.hid} · DNA Analytics` : "Core not found" };
 }
 
 export default async function CorePage({ params, searchParams }: Props) {

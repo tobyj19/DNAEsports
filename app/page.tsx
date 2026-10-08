@@ -1,82 +1,102 @@
-import { getStandings } from "@/lib/api";
+import Link from "next/link";
+import QuickSearch from "./quick-search";
 
-function zoneLabel(zone: string | null) {
-  if (!zone) return null;
-  if (zone === "relegate") return { text: "Relegation", color: "text-red-400" };
-  if (zone === "risk") return { text: "At risk", color: "text-amber" };
-  if (zone === "promote") return { text: "Promotion", color: "text-mint" };
-  return { text: zone, color: "text-[#9CA6B0]" };
-}
+const GAME_LINKS = [
+  { href: "/core-search", label: "Core Search", desc: "Any core by name or ID — full profile, telemetry, PWR/VAR" },
+  { href: "/power-search", label: "Power Search", desc: "Scan every core by Power, Variance and AdjOdds" },
+  { href: "/race-sim", label: "Race Sim", desc: "Simulate a race from per-distance estimates" },
+  { href: "/breeding", label: "Breeding", desc: "Pairings, distance categories and the Splice Arena" },
+];
 
-export default async function StandingsPage() {
-  let data;
-  let error: string | null = null;
-  try {
-    data = await getStandings();
-  } catch (e) {
-    error = e instanceof Error ? e.message : "Failed to load standings";
-  }
+const ESPORTS_LINKS = [
+  { href: "/esports", label: "Standings", desc: "Pro League table, promotion and relegation" },
+  { href: "/teams", label: "Teams", desc: "Rosters and team profiles" },
+  { href: "/compare", label: "Compare", desc: "Head-to-head team comparison by distance" },
+  { href: "/map-fit", label: "Map Fit", desc: "Veto and pick strategy across the 4 maps" },
+];
 
-  if (error || !data) {
-    return (
-      <div className="rounded-lg border border-line bg-panel p-6">
-        <p className="text-red-400">Couldn&apos;t load standings: {error}</p>
-      </div>
-    );
-  }
-
-  const proTable = data.tables.pro;
-  const rows = [...proTable.rows].sort((a, b) => a.rank - b.rank);
-
+export default function HomePage() {
   return (
-    <div>
-      <div className="flex items-baseline justify-between mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">{data.subtitle}</h1>
-        <span className="text-sm text-[#9CA6B0]">
-          {data.events_used} events played · updated {new Date(data.built_at).toLocaleString()}
-        </span>
+    <div className="py-6">
+      <div className="relative mb-10 text-center">
+        <div className="pointer-events-none absolute left-1/2 top-0 h-40 w-[28rem] -translate-x-1/2 rounded-full bg-mint/20 blur-3xl" />
+        <h1 className="relative text-4xl sm:text-5xl font-extrabold tracking-tight">
+          DNA <span className="bg-gradient-to-r from-mint to-sky-400 bg-clip-text text-transparent">Analytics</span>
+        </h1>
+        <p className="relative mt-3 text-[#9CA6B0]">Data tools for DNA Racing — pick where you want to go.</p>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-line">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-panel text-left text-[#9CA6B0]">
-              <th className="px-4 py-3 font-medium">#</th>
-              <th className="px-4 py-3 font-medium">Team</th>
-              <th className="px-4 py-3 font-medium">Group</th>
-              <th className="px-4 py-3 font-medium text-right">Events</th>
-              <th className="px-4 py-3 font-medium text-right">W-L</th>
-              <th className="px-4 py-3 font-medium text-right">Race Diff</th>
-              <th className="px-4 py-3 font-medium text-right">Pts</th>
-              <th className="px-4 py-3 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const zone = zoneLabel(row.zone);
-              return (
-                <tr key={row.team_id} className="border-t border-line hover:bg-panel/60">
-                  <td className="px-4 py-3 text-[#9CA6B0]">{row.rank}</td>
-                  <td className="px-4 py-3 font-medium">{row.team_name}</td>
-                  <td className="px-4 py-3 text-[#9CA6B0] capitalize">{row.group}</td>
-                  <td className="px-4 py-3 text-right">
-                    {row.event_w}-{row.event_l}
-                    {row.event_d ? `-${row.event_d}` : ""}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {row.race_w}-{row.race_l}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {row.race_diff > 0 ? `+${row.race_diff}` : row.race_diff}
-                  </td>
-                  <td className="px-4 py-3 text-right font-semibold">{row.points}</td>
-                  <td className={`px-4 py-3 text-xs ${zone?.color ?? ""}`}>{zone?.text}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <SectionCard
+          title="Main Game"
+          tagline="Every core in DNA Racing"
+          href="/core-search"
+          accent="#4ADE80"
+          links={GAME_LINKS}
+        >
+          <QuickSearch />
+        </SectionCard>
+        <SectionCard
+          title="Esports"
+          tagline="DNA Racing Pro League"
+          href="/esports"
+          accent="#38BDF8"
+          links={ESPORTS_LINKS}
+        />
       </div>
     </div>
+  );
+}
+
+function SectionCard({
+  title,
+  tagline,
+  href,
+  accent,
+  links,
+  children,
+}: {
+  title: string;
+  tagline: string;
+  href: string;
+  accent: string;
+  links: { href: string; label: string; desc: string }[];
+  children?: React.ReactNode;
+}) {
+  return (
+    <section
+      className="relative overflow-hidden rounded-2xl border border-white/[0.08] p-6"
+      style={{ background: `linear-gradient(145deg, ${accent}1f 0%, rgba(18,22,28,0.95) 45%, #0B0D10 100%)` }}
+    >
+      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full blur-3xl opacity-30" style={{ background: accent }} />
+      <div className="relative">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: accent }}>{tagline}</div>
+        <div className="mt-1 flex items-center justify-between gap-3">
+          <h2 className="text-2xl font-bold">{title}</h2>
+          <Link
+            href={href}
+            className="rounded-xl px-3 py-1.5 text-sm font-semibold text-ink transition-opacity hover:opacity-90"
+            style={{ background: accent }}
+          >
+            Enter →
+          </Link>
+        </div>
+
+        {children && <div className="mt-4">{children}</div>}
+
+        <div className="mt-4 grid gap-2">
+          {links.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="group rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2.5 transition-colors hover:border-white/20 hover:bg-white/[0.04]"
+            >
+              <div className="text-sm font-semibold group-hover:text-white">{l.label}</div>
+              <div className="text-xs text-[#9CA6B0]">{l.desc}</div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }

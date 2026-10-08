@@ -1,10 +1,11 @@
-# DNA Esports Companion
+# DNA Analytics
 
-A personal companion tool for the **DNA Racing Pro League** — live standings, team
-roster lookup, and a map-fit calculator to help with veto/pick strategy.
+Data tools for **DNA Racing** — a main-game section (core search and full core
+profiles with telemetry and PWR/VAR estimates, power search, race sim, breeding)
+and an esports section for the **DNA Racing Pro League** (live standings, team
+rosters, comparisons, and a map-fit calculator for veto/pick strategy).
 
-Next.js 14 (App Router) + TypeScript + Tailwind. No database, no auth — this is a v1
-scaffold meant to be built on.
+Next.js 14 (App Router) + TypeScript + Tailwind. No database, no auth.
 
 ## What's real vs. manual
 

@@ -7,9 +7,9 @@ import type { GameCoreEntry } from "@/lib/gameCoreSearch";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
-export default function CoreSearchClient() {
+export default function CoreSearchClient({ initialQuery = "" }: { initialQuery?: string }) {
   const router = useRouter();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<GameCoreEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [indexed, setIndexed] = useState<number | null>(null);
