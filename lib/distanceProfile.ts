@@ -12,7 +12,8 @@
 import data from "./data/distance-profiles.json";
 import type { RaceMode } from "./gameCoreSearch";
 
-export type DistanceType = "Sprint" | "Sprint-Mid" | "Mid" | "Mid-Marathon" | "Marathon" | "All-Rounder";
+import type { DistanceType } from "./distanceTypes";
+export type { DistanceType } from "./distanceTypes";
 export type DistanceSource = "own" | "parents" | "raced";
 
 export interface CoreDistance {

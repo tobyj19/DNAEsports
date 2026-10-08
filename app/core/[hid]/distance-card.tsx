@@ -4,27 +4,10 @@
 // All-Rounder from finish times vs the field, or "Developing" at its most-raced
 // distance with a likely type from its parents.
 
-import type { CoreDistance, DistanceType } from "@/lib/distanceProfile";
+import type { CoreDistance } from "@/lib/distanceProfile";
+import { DISTANCE_TYPE_COLOR as TYPE_COLOR, DISTANCE_TYPE_HINT as TYPE_HINT } from "@/lib/distanceTypes";
 import type { RaceMode } from "@/lib/gameCoreSearch";
 import { Card } from "./ui";
-
-const TYPE_COLOR: Record<DistanceType, string> = {
-  Sprint: "#F87171",
-  "Sprint-Mid": "#FB923C",
-  Mid: "#FACC15",
-  "All-Rounder": "#A3E635",
-  "Mid-Marathon": "#38BDF8",
-  Marathon: "#818CF8",
-};
-
-const TYPE_HINT: Record<DistanceType, string> = {
-  Sprint: "Relatively fastest at 1000-1200m, fades over distance",
-  "Sprint-Mid": "Leans toward shorter distances",
-  Mid: "Relatively fastest around 1400-1800m",
-  "All-Rounder": "No clear distance preference",
-  "Mid-Marathon": "Leans toward longer distances",
-  Marathon: "Relatively fastest at 2000-2200m, gets stronger with distance",
-};
 
 function LeanBar({ lean, color }: { lean: number; color: string }) {
   // lean > 0 = sprint (left), < 0 = marathon (right); ±0.6 %/km fills the bar

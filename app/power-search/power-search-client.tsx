@@ -11,6 +11,7 @@ import {
   type PowerFilter,
   type RaceMode,
 } from "@/lib/corePowerSearch";
+import { DISTANCE_TYPES, DISTANCE_TYPE_COLOR, DISTANCE_TYPE_HINT, type DistanceTag } from "@/lib/distanceTypes";
 
 const CONCURRENT_CHUNKS = 3;
 const MAX_DISPLAY = 500;
@@ -129,6 +130,9 @@ export default function PowerSearchClient() {
       "Horse VAR",
       "Horse ADJ",
       "Horse Races",
+      "Bike Distance",
+      "Car Distance",
+      "Horse Distance",
       "Matched Modes",
     ];
     const rows = sorted.map((c) => [
@@ -149,6 +153,9 @@ export default function PowerSearchClient() {
       c.modes.horse?.variance?.toFixed(1) ?? "",
       c.modes.horse?.adjOdds?.toFixed(1) ?? "",
       c.modes.horse?.racesN ?? "",
+      distanceLabel(c.distance?.bike),
+      distanceLabel(c.distance?.car),
+      distanceLabel(c.distance?.horse),
       c.matchedModes.map((m) => MODE_LABEL[m]).join("/"),
     ]);
     const csv = [headers, ...rows].map((row) => row.join(",")).join("\n");
@@ -245,6 +252,49 @@ export default function PowerSearchClient() {
             </select>
           </div>
         </div>
+
+        <div className="mt-4">
+          <label className="block text-xs text-muted mb-1.5">
+            Distance type
+            {(filter.distanceTypes?.length ?? 0) > 0 && (
+              <span className="ml-2 text-cyan">{filter.distanceTypes!.length} selected</span>
+            )}
+          </label>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {DISTANCE_TYPES.map((t) => {
+              const on = filter.distanceTypes?.includes(t) ?? false;
+              const color = DISTANCE_TYPE_COLOR[t];
+              return (
+                <button
+                  key={t}
+                  title={DISTANCE_TYPE_HINT[t]}
+                  onClick={() => {
+                    const cur = filter.distanceTypes ?? [];
+                    updateFilter("distanceTypes", on ? cur.filter((x) => x !== t) : [...cur, t]);
+                  }}
+                  className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    on ? "text-white" : "border-line bg-ink text-muted hover:text-white"
+                  }`}
+                  style={on ? { borderColor: `${color}99`, background: `${color}26` } : undefined}
+                >
+                  <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ background: color }} />
+                  {t}
+                </button>
+              );
+            })}
+            {(filter.distanceTypes?.length ?? 0) > 0 && (
+              <label className="ml-2 flex items-center gap-1.5 text-xs text-muted">
+                <input
+                  type="checkbox"
+                  checked={filter.provenDistanceOnly ?? false}
+                  onChange={(e) => updateFilter("provenDistanceOnly", e.target.checked)}
+                  className="accent-cyan"
+                />
+                Proven profiles only (skip &ldquo;likely&rdquo; ones from parents)
+              </label>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="flex items-center gap-3 mb-4">
@@ -321,6 +371,7 @@ export default function PowerSearchClient() {
                         {stats
                           ? `${stats.power.toFixed(0)}/${stats.variance.toFixed(0)}/${stats.adjOdds.toFixed(0)} (${stats.racesN})`
                           : "—"}
+                        {c.distance?.[mode] && <DistancePill tag={c.distance[mode]!} />}
                       </td>
                     );
                   })}
@@ -343,6 +394,29 @@ export default function PowerSearchClient() {
     </div>
   );
 }
+
+/** Distance tag for one mode; "likely" (from parents) is shown softer and labelled. */
+function DistancePill({ tag }: { tag: DistanceTag }) {
+  const color = DISTANCE_TYPE_COLOR[tag.type];
+  return (
+    <div className="mt-1">
+      <span
+        title={tag.likely ? `Likely ${tag.type} — from its parents; not enough races of its own yet` : DISTANCE_TYPE_HINT[tag.type]}
+        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${tag.likely ? "border-dashed" : ""}`}
+        style={{
+          color,
+          borderColor: tag.likely ? `${color}66` : `${color}99`,
+          background: tag.likely ? "transparent" : `${color}1f`,
+        }}
+      >
+        {tag.likely && <span className="text-muted">Likely</span>}
+        {tag.type}
+      </span>
+    </div>
+  );
+}
+
+const distanceLabel = (tag?: DistanceTag) => (tag ? `${tag.likely ? "Likely " : ""}${tag.type}` : "");
 
 function DualRangeSlider({
   label,

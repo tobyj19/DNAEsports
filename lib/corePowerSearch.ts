@@ -14,6 +14,8 @@
 // and unminted slots, hence filtering out `type === "trainer"` and nulls. The
 // 100,001+ and 300,001+ blocks are internal / test records and are skipped.
 
+import type { DistanceTag, DistanceType } from "./distanceTypes";
+
 const API_BASE = "https://api.dnaracing.run/fbike";
 
 export const ID_RANGES = [
@@ -49,6 +51,8 @@ export interface FoundCore {
   modes: Partial<Record<RaceMode, ModeStats>>;
   /** Which mode(s) actually satisfied the filter thresholds — a core can show all three modes' stats but only match on one. */
   matchedModes: RaceMode[];
+  /** Distance profile per mode (added by the API route from lib/distanceProfile). */
+  distance?: Partial<Record<RaceMode, DistanceTag>>;
 }
 
 export interface PowerFilter {
@@ -64,6 +68,10 @@ export interface PowerFilter {
   gender?: string;
   /** Which race mode(s) the thresholds above are checked against. Omitted/empty = check all three (any-mode match). */
   modes?: RaceMode[];
+  /** Keep only cores whose distance type (in a matched mode) is one of these. Empty = any. */
+  distanceTypes?: DistanceType[];
+  /** With distanceTypes: ignore types inferred from parents, count proven profiles only. */
+  provenDistanceOnly?: boolean;
 }
 
 export const DEFAULT_FILTER: PowerFilter = {
