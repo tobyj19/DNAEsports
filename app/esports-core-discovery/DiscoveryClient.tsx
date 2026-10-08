@@ -47,7 +47,7 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
       <div className="mx-auto max-w-6xl px-6 py-10 sm:px-10">
         <header className="mb-10 border-b border-line pb-6">
           <p className="text-sm text-muted" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
-            DNA-Esports / Strategy
+            DNA Analytics / Esports
           </p>
           <h1
             className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl"

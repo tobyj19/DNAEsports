@@ -2,7 +2,7 @@
 
 // app/breeding/page.tsx
 //
-// Breeding Strategy tool for DNA-Esports. Load a vault by wallet address,
+// Breeding Strategy tool for DNA Analytics. Load a vault by wallet address,
 // rank sire/dam pairs against a chosen strategy, and surface predicted
 // offspring quality + ROI. Distance strategies use the Sprint/Mid/Marathon +
 // hybrid classification from lib/distance-strategy.ts, based on the 7 real
@@ -113,7 +113,7 @@ export default function BreedingPage() {
       <div className="mx-auto max-w-6xl px-6 py-10 sm:px-10">
         <header className="mb-10 border-b border-line pb-6">
           <p className="text-sm text-muted" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
-            DNA-Esports / Strategy
+            DNA Analytics / Main Game
           </p>
           <h1
             className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl"
