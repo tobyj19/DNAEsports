@@ -52,9 +52,13 @@ export interface ModeScores {
   rating: BreederRating | null;
 }
 
+/** Per trait: value at the 20th/40th/60th/80th/95th percentile of rated cores (for plain-language labels). */
+export type TraitCuts = Record<keyof ScoreParts, [number, number, number, number, number]>;
+
 export interface BreederScores {
   generated: string;
   modes: Partial<Record<RaceMode, ModeScores>>;
+  traitCuts: Record<RaceMode, TraitCuts>;
 }
 
 interface RawFile {
@@ -63,6 +67,7 @@ interface RawFile {
   grades: [Grade, number][];
   breedingSources: BreedingSource[];
   ratingConfidence: RatingConfidence[];
+  traitCuts: Record<RaceMode, TraitCuts>;
   cores: Record<string, Partial<Record<RaceMode, { b?: number[]; r?: number[] }>>>;
 }
 
@@ -97,7 +102,7 @@ export function getBreederScores(hid: number): BreederScores {
         : null,
     };
   }
-  return { generated: FILE.generated, modes };
+  return { generated: FILE.generated, modes, traitCuts: FILE.traitCuts };
 }
 
 export interface GradeChip {

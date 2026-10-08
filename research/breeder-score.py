@@ -245,9 +245,14 @@ def main():
         validate(lineage, power, results, star)
         return
 
-    out = defaultdict(dict); summary = {}
+    out = defaultdict(dict); summary = {}; trait_cuts = {}
     for mode in MODES:
         s = score_mode(mode, lineage, power, results, star)
+        # per-trait cut points (p20/p40/p60/p80/p95 of officially rated cores' potential) for plain-language labels
+        trait_cuts[mode] = {}
+        for c in COMPONENTS:
+            vals = sorted(s["breeding"][h][c] for h in s["official"] if h in s["breeding"])
+            trait_cuts[mode][c] = [round(vals[int(q * (len(vals) - 1))], 3) for q in (0.2, 0.4, 0.6, 0.8, 0.95)]
         bp = percentiles(s["breeding_total"], s["official"])
         n_off = s["n_off"]
         rp = percentiles(s["rating_total"], [h for h in s["rating_total"] if n_off.get(h, 0) >= 3])
@@ -283,9 +288,10 @@ def main():
         print(f"\nwrote {a.out}")
     if a.site:
         # cores[hid][mode] = { b: [pct, source#, 5 weighted parts], r: [pct, confidence#, offspring, 5 weighted parts] }
+        # traitCuts[mode][trait] = unweighted value at p20/p40/p60/p80/p95 of rated cores
         with open(a.site, "w") as f:
             json.dump({"generated": GENERATED, "weights": WEIGHTS, "grades": GRADES, "breedingSources": BREEDING_SOURCES,
-                       "ratingConfidence": RATING_CONF, "cores": out}, f, separators=(",", ":"))
+                       "ratingConfidence": RATING_CONF, "traitCuts": trait_cuts, "cores": out}, f, separators=(",", ":"))
         print(f"wrote {a.site} ({os.path.getsize(a.site) // 1024} KB)")
 
 
