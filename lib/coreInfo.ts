@@ -172,7 +172,7 @@ function distanceRecords(stats: Record<string, HStat> | undefined): DistanceReco
 }
 
 interface BulkStat {
-  val: number | null;
+  val?: number | null;
   fill: { per: number };
 }
 interface PowerBulkRow {
@@ -180,8 +180,9 @@ interface PowerBulkRow {
   power: Partial<Record<RaceMode, { power: BulkStat; variance: BulkStat; adjodds: BulkStat; races_n: number } | null>>;
 }
 
-// power_bulk reports `val: null` (and per 0) until a core has enough races in that mode.
-const bulkPct = (s: BulkStat | undefined) => (s && s.val != null ? s.fill.per : null);
+// power_bulk reports `val: null` (and per 0) until a core has enough races in that mode;
+// rated cores have no `val` key at all, so only an explicit null means unrated.
+const bulkPct = (s: BulkStat | undefined) => (s && s.val !== null ? s.fill.per : null);
 
 async function fetchRefs(hids: number[]): Promise<Map<number, CoreRef>> {
   if (hids.length === 0) return new Map();
