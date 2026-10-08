@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     element: typeof body.element === "string" && body.element ? body.element : null,
     type: typeof body.type === "string" && body.type ? body.type : null,
     parentFilter: parseParentFilter(body.parentFilter),
-    distance: (["sprint", "middle", "stayer"] as const).find((d) => d === body.distance) ?? null,
+    distance: (["sprint", "mid", "marathon"] as const).find((d) => d === body.distance) ?? null,
     limit: 60,
   };
   if (request.fatherSources.length === 0 || request.motherSources.length === 0) {

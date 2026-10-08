@@ -27,7 +27,7 @@ const TYPE_HINT: Record<DistanceType, string> = {
 };
 
 function LeanBar({ lean, color }: { lean: number; color: string }) {
-  // lean > 0 = sprinter (left), < 0 = stayer (right); ±0.6 %/km fills the bar
+  // lean > 0 = sprint (left), < 0 = marathon (right); ±0.6 %/km fills the bar
   const pos = 50 - Math.max(-1, Math.min(1, lean / 0.6)) * 50;
   return (
     <div>
@@ -39,8 +39,9 @@ function LeanBar({ lean, color }: { lean: number; color: string }) {
         />
       </div>
       <div className="mt-1 flex justify-between text-[10px] uppercase tracking-wider text-faint">
-        <span>Sprinter</span>
-        <span>Stayer</span>
+        <span>Sprint</span>
+        <span>Mid</span>
+        <span>Marathon</span>
       </div>
     </div>
   );

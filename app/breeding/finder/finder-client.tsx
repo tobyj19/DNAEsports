@@ -180,7 +180,7 @@ export default function FinderClient() {
         <div className="flex flex-wrap items-end gap-3 text-xs">
           <Select label="Offspring element" value={element} onChange={setElement} options={["", "water", "earth", "fire", "metal"]} />
           <Select label="Offspring type" value={type} onChange={setType} options={["", "morphed", "freak", "xclass"]} />
-          <Select label="Offspring distance (likely)" value={distance} onChange={setDistance} options={["", "sprint", "middle", "stayer"]} />
+          <Select label="Offspring distance (likely)" value={distance} onChange={setDistance} options={["", "sprint", "mid", "marathon"]} />
           <label className="flex flex-col gap-1 text-muted">
             Max total cost ($)
             <input

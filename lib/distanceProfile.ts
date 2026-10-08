@@ -5,7 +5,7 @@
 // time-based method and categories as lib/distance-strategy.ts. Fallbacks:
 //   own      conclusive profile from its own races
 //   parents  "Developing" — likely type from its parents' leans (offspring lean =
-//            a + b x parents' average lean; right side of sprint/middle/stayer ~6 in 10 on bike)
+//            a + b x parents' average lean; right side of sprint / mid / marathon ~6 in 10 on bike)
 //   raced    "Developing" at its most-raced distance only
 // Server-only (the data file is ~2 MB); pages pass small entries down.
 
@@ -92,9 +92,9 @@ export function getDistanceProfiles(hid: number, parentHids: (number | null | un
   return out;
 }
 
-export type DistanceGroup = "sprint" | "middle" | "stayer";
+export type DistanceGroup = "sprint" | "mid" | "marathon";
 
-/** Sprint-ish / middle / stayer-ish, for filters. */
+/** Sprint-leaning (Sprint, Sprint-Mid) / mid (Mid, All-Rounder) / marathon-leaning (Marathon, Mid-Marathon), for filters. */
 export function distanceGroup(t: DistanceType): DistanceGroup {
-  return t === "Sprint" || t === "Sprint-Mid" ? "sprint" : t === "Marathon" || t === "Mid-Marathon" ? "stayer" : "middle";
+  return t === "Sprint" || t === "Sprint-Mid" ? "sprint" : t === "Marathon" || t === "Mid-Marathon" ? "marathon" : "mid";
 }

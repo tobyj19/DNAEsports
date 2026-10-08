@@ -225,7 +225,7 @@ function OffspringCard({ p, father, mother, mode }: { p: PairPrediction; father:
       )}
       <p className="mt-2 text-[11px] text-faint">
         Element, type and F# follow fixed game rules. Win % and place % depend a lot on which races a core enters, so their ranges are wide.
-        {dist && "The likely distance type comes from both parents' distance preferences (right side of sprint / middle / stayer about 6 times in 10 on bike). "}
+        {dist && "The likely distance type comes from both parents' distance preferences (right side of sprint / mid / marathon about 6 times in 10 on bike). "}
         Jackpot odds come from how often real offspring out-PWR both parents — about 1 in 40 offspring lands 8+ PWR away from its
         prediction, two-thirds of them above.
       </p>
