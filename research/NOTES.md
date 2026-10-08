@@ -80,6 +80,32 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
   lines, so "preferred" often lands on 900/1000 or 2200/2300 — trust the lean/type more
   than the exact metre figure unless the profile actually curves.
 
+### Breeder Score v1 (Oct 8 — `breeder-score.py --dir research-data --out research-data/breeder-scores.json`, after star-analysis.py)
+
+- Weights (approved): PWR 45, ADJ 20/25/25, Win 15, Place 10, Beats-sims 10/5/5 (bike/car/horse);
+  no separate star weight.
+- Per component: breeding value = h2 × best estimate of the core's own z. h2 measured as
+  offspring-on-mid-parent slope (bike PWR 0.9, ADJ 0.4, win 0.55, place 0.59, beats 0.34;
+  car/horse lower), so weakly inherited traits automatically count less.
+- **Progeny test** ("flip it to what they've bred"): each rated offspring implies a parent
+  z of 2·(child z − a)/h2 − mate z (a = population drop parent→offspring, so breeders
+  aren't penalised for the normal ~3.5 PWR drop). Mixed with own z by reliability
+  n/(n + (4−h2)/h2). Unrated cores that have bred are scored from offspring alone.
+- No own stats and no rated offspring → pedigree estimate (average of parents' values),
+  placed on the scale but excluded from setting the percentile cut-offs.
+- Genesis: bike 2,679 / 4,296 scored (1,399 own+progeny, 1,104 own, 176 progeny only).
+  The 1,617 unscored have no official rating and no rated offspring (653 never raced bike).
+
+- **Validated** (`breeder-score.py --validate`): offspring split in halves; parents scored
+  with one half hidden, then used to predict it. Predicting offspring overall stats:
+  r 0.70 bike / 0.51 car / 0.54 horse vs PWR-only 0.67 / 0.43 / 0.46. For parents with
+  5+ known offspring the progeny test adds most (bike 0.40 vs 0.30 PWR-only; car 0.40 vs
+  0.27; horse small n, 0.25 vs 0.22). Parents averaging S/A → 71% of bike offspring land
+  in the top 30%; parents averaging D → 3%.
+- **On the site**: `--site lib/data/breeder-scores.json` (~2 MB, read server-side by
+  `lib/breederScore.ts`) → Breeder Score card on the core Overview tab. Rerun after each
+  crawl: star-analysis.py, then breeder-score.py with `--site`.
+
 ## Agreed Breeder Score plan (pending final weights)
 
 - Per mode. 0–100 = percentile of breeding value. Tiers: S top 2% / A 8% / B 20% /

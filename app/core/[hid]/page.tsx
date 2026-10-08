@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getCoreInfo } from "@/lib/coreInfo";
+import { getBreederScores } from "@/lib/breederScore";
 import CoreProfileClient from "./core-profile-client";
 
 interface Props {
@@ -26,5 +27,5 @@ export default async function CorePage({ params, searchParams }: Props) {
   if (!info) notFound();
 
   const mode = searchParams.mode === "bike" || searchParams.mode === "car" || searchParams.mode === "horse" ? searchParams.mode : null;
-  return <CoreProfileClient info={info} initialMode={mode} />;
+  return <CoreProfileClient info={info} initialMode={mode} breeder={getBreederScores(hid)} />;
 }

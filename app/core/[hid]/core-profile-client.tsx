@@ -11,6 +11,8 @@ import { Card, Chip, DEFAULT_ACCENT, ELEMENT_ACCENT, MODE_ICON, Meter, Ring, for
 import Telemetry from "./telemetry";
 import Estimates from "./estimates";
 import RaceHistory from "./race-history";
+import BreederScoreCard from "./breeder-score";
+import type { BreederScores } from "@/lib/breederScore";
 
 const MODES: RaceMode[] = ["bike", "car", "horse"];
 type Tab = "overview" | "telemetry" | "estimates" | "races" | "distances" | "family";
@@ -26,7 +28,15 @@ const MIN_RACES_FOR_BEST = 5;
 const MARKET_URL = "https://market.dnaracing.run/asset/core";
 const OFFICIAL_URL = "https://fbike.dnaracing.run/core";
 
-export default function CoreProfileClient({ info, initialMode }: { info: CoreInfo; initialMode: RaceMode | null }) {
+export default function CoreProfileClient({
+  info,
+  initialMode,
+  breeder,
+}: {
+  info: CoreInfo;
+  initialMode: RaceMode | null;
+  breeder: BreederScores;
+}) {
   // Default to the mode the core has raced most.
   const busiest = [...MODES].sort((a, b) => info.modes[b].racesRun - info.modes[a].racesRun)[0];
   const [mode, setMode] = useState<RaceMode>(initialMode ?? busiest);
@@ -92,7 +102,7 @@ export default function CoreProfileClient({ info, initialMode }: { info: CoreInf
 
       <div className="min-w-0 flex flex-col gap-4">
         <Hero info={info} accent={accent} />
-        {tab === "overview" && <Overview info={info} mode={mode} accent={accent} />}
+        {tab === "overview" && <Overview info={info} mode={mode} accent={accent} breeder={breeder} />}
         {tab === "telemetry" && <RacesGate state={races}>{(d) => <Telemetry info={info} races={d.races} mode={mode} />}</RacesGate>}
         {tab === "estimates" && <RacesGate state={races}>{(d) => <Estimates estimates={d.estimates[mode]} official={info.modes[mode]} mode={mode} />}</RacesGate>}
         {tab === "races" && (
@@ -167,7 +177,7 @@ function Hero({ info, accent }: { info: CoreInfo; accent: string }) {
   );
 }
 
-function Overview({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; accent: string }) {
+function Overview({ info, mode, accent, breeder }: { info: CoreInfo; mode: RaceMode; accent: string; breeder: BreederScores }) {
   const mounted = useMounted();
   const m = info.modes[mode];
   const s = info.splicing;
@@ -195,6 +205,8 @@ function Overview({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acce
           <p className="mt-2 text-center text-xs text-muted">Not enough {mode} races yet for power stats.</p>
         )}
       </Card>
+
+      <BreederScoreCard scores={breeder} mode={mode} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Meter
