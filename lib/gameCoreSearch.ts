@@ -6,15 +6,12 @@
 // So we build a name index of every core in the game by scanning the hid range,
 // keep it in memory for a few hours, and search it locally.
 
-import { getPower, getRaceHistory } from "./api";
-import { computeDistanceStats, type DistanceStat } from "./coreProfile";
 
 const API_BASE = "https://api.dnaracing.run/fbike";
 
 const ID_BATCH = 2000;
 const PARALLEL_BATCHES = 4;
 const INDEX_TTL_MS = 6 * 60 * 60 * 1000;
-const RACE_HISTORY_LIMIT = 2000;
 
 export type RaceMode = "bike" | "car" | "horse";
 export const RACE_MODES: RaceMode[] = ["bike", "car", "horse"];
@@ -141,44 +138,4 @@ export function searchGameCores(
       (a.score === 4 ? a.core.hid - b.core.hid : a.core.name.localeCompare(b.core.name))
   );
   return { results: scored.slice(0, limit).map((s) => s.core), total: scored.length };
-}
-
-export interface GameModeProfile {
-  powerPct: number | null;
-  variancePct: number | null;
-  adjOddsPct: number | null;
-  racesN: number;
-  distances: DistanceStat[];
-}
-
-export interface GameCoreProfile extends GameCoreEntry {
-  /** Only modes the core has raced (or has power stats for) are included. */
-  modes: Partial<Record<RaceMode, GameModeProfile>>;
-  racesFetched: number;
-}
-
-export async function buildGameCoreProfile(hid: number): Promise<GameCoreProfile | null> {
-  const [identity, power, races] = await Promise.all([
-    fetchMini([hid]).then((r) => r[0]),
-    getPower(hid).catch(() => null),
-    getRaceHistory(hid, RACE_HISTORY_LIMIT).catch(() => []),
-  ]);
-  if (!identity) return null;
-
-  const modes: GameCoreProfile["modes"] = {};
-  for (const mode of RACE_MODES) {
-    const p = power?.power[mode];
-    const { all } = computeDistanceStats(races, mode, null);
-    const racesN = Math.max(p?.races_n ?? 0, all.reduce((n, d) => n + d.races, 0));
-    if (racesN === 0) continue;
-    modes[mode] = {
-      powerPct: p ? p.power.fill.per : null,
-      variancePct: p ? p.variance.fill.per : null,
-      adjOddsPct: p ? p.adjodds.fill.per : null,
-      racesN,
-      distances: all,
-    };
-  }
-
-  return { ...identity, modes, racesFetched: races.length };
 }

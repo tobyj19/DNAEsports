@@ -6,7 +6,7 @@ export default function CoreSearchPage() {
       <h1 className="text-2xl font-semibold tracking-tight mb-2">Core Search</h1>
       <p className="text-sm text-[#9CA6B0] mb-6 max-w-2xl">
         Look up any core in the main DNA Racing game — not just esports rosters. Search by name or core ID, then
-        pick a core for its Power/Variance/AdjOdds and results at every distance, per mode.
+        click a result (or press Enter for the top one) to open its full profile.
       </p>
       <CoreSearchClient />
     </div>
