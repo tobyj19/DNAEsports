@@ -5,19 +5,25 @@ import Link from "next/link";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { CoreInfo, CoreRef } from "@/lib/coreInfo";
 import { MAX_AGEING } from "@/lib/coreInfo";
-import type { GameCoreProfile, RaceMode } from "@/lib/gameCoreSearch";
-import { getPopulationAvgTime } from "@/lib/coreProfile";
-import DistancePanel from "../../cores/distance-panel";
+import type { RaceMode } from "@/lib/gameCoreSearch";
+import type { CoreRaces } from "@/lib/coreRaces";
 import { Card, Chip, DEFAULT_ACCENT, ELEMENT_ACCENT, MODE_ICON, Meter, Ring, formatDuration, useMounted } from "./ui";
+import Telemetry from "./telemetry";
+import Estimates from "./estimates";
+import RaceHistory from "./race-history";
 
 const MODES: RaceMode[] = ["bike", "car", "horse"];
-type Tab = "overview" | "distances" | "races" | "family";
+type Tab = "overview" | "telemetry" | "estimates" | "races" | "distances" | "family";
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
-  { id: "distances", label: "Distances" },
+  { id: "telemetry", label: "Telemetry" },
+  { id: "estimates", label: "PWR / VAR by distance" },
   { id: "races", label: "Race History" },
+  { id: "distances", label: "Win rate by distance" },
   { id: "family", label: "Family" },
 ];
+// Telemetry and the PWR/VAR estimates are built from bike races (the field averages are bike-only).
+const BIKE_ONLY_TABS: Tab[] = ["telemetry", "estimates"];
 const NOTES_MAX = 280;
 const MIN_RACES_FOR_BEST = 5;
 const MARKET_URL = "https://market.dnaracing.run/asset/core";
@@ -29,6 +35,7 @@ export default function CoreProfileClient({ info, initialMode }: { info: CoreInf
   const [mode, setMode] = useState<RaceMode>(initialMode ?? busiest);
   const [tab, setTab] = useState<Tab>("overview");
   const accent = (info.element && ELEMENT_ACCENT[info.element]) || DEFAULT_ACCENT;
+  const races = useCoreRaces(info.hid, tab === "telemetry" || tab === "estimates" || tab === "races");
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[15rem_1fr] gap-5">
@@ -90,8 +97,17 @@ export default function CoreProfileClient({ info, initialMode }: { info: CoreInf
       <div className="min-w-0 flex flex-col gap-4">
         <Hero info={info} accent={accent} />
         {tab === "overview" && <Overview info={info} mode={mode} accent={accent} />}
+        {BIKE_ONLY_TABS.includes(tab) && mode !== "bike" && (
+          <p className="text-xs text-amber">This view uses bike races only — the mode switch doesn&apos;t apply here.</p>
+        )}
+        {tab === "telemetry" && <RacesGate state={races}>{(d) => <Telemetry info={info} races={d.races} accent={accent} />}</RacesGate>}
+        {tab === "estimates" && <RacesGate state={races}>{(d) => <Estimates estimates={d.estimates} official={info.modes.bike} />}</RacesGate>}
+        {tab === "races" && (
+          <RacesGate state={races}>
+            {(d) => <RaceHistory races={d.races} mode={mode} tourneyProfit={d.tourneyProfit} accent={accent} />}
+          </RacesGate>
+        )}
         {tab === "distances" && <Distances info={info} mode={mode} accent={accent} />}
-        {tab === "races" && <RaceHistory hid={info.hid} mode={mode} />}
         {tab === "family" && <Family info={info} />}
       </div>
     </div>
@@ -366,59 +382,6 @@ function Distances({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acc
   );
 }
 
-function RaceHistory({ hid, mode }: { hid: number; mode: RaceMode }) {
-  const [profile, setProfile] = useState<GameCoreProfile | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setError(null);
-    fetch(`/api/game-core-detail?hid=${hid}`, { signal: controller.signal })
-      .then(async (res) => {
-        const data = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(data?.error ?? "Couldn't load race history — try again.");
-        setProfile(data);
-      })
-      .catch((e) => {
-        if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Failed to load");
-      });
-    return () => controller.abort();
-  }, [hid, attempt]);
-
-  if (error) {
-    return (
-      <Card>
-        <p className="text-sm text-red-400 mb-2">{error}</p>
-        <button onClick={() => setAttempt((a) => a + 1)} className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-white/5">
-          Retry
-        </button>
-      </Card>
-    );
-  }
-  if (!profile) return <Card><p className="text-sm text-[#9CA6B0]">Loading race history…</p></Card>;
-
-  const stats = profile.modes[mode];
-  return (
-    <Card title={`Race history · ${mode}`} right={<span className="text-xs text-[#9CA6B0]">{stats?.racesN ?? 0} races</span>}>
-      {!stats || stats.distances.length === 0 ? (
-        <p className="text-sm text-[#9CA6B0]">No finished {mode} races with times yet.</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3">
-          {stats.distances.map((d) => (
-            <DistancePanel
-              key={d.distance}
-              stat={d}
-              // Field averages were crawled from bike races only.
-              populationAvg={mode === "bike" ? getPopulationAvgTime(d.distance) : null}
-            />
-          ))}
-        </div>
-      )}
-    </Card>
-  );
-}
-
 function Family({ info }: { info: CoreInfo }) {
   return (
     <>
@@ -505,4 +468,44 @@ function Notes({ hid }: { hid: number }) {
       />
     </Card>
   );
+}
+
+/** Race list + estimates, fetched once when a tab first needs them. */
+function useCoreRaces(hid: number, needed: boolean) {
+  const [data, setData] = useState<CoreRaces | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    if (!needed || data) return;
+    const controller = new AbortController();
+    setError(null);
+    fetch(`/api/core-races?hid=${hid}`, { signal: controller.signal })
+      .then(async (res) => {
+        const body = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(body?.error ?? "Couldn't load race history — try again.");
+        setData(body);
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Failed to load");
+      });
+    return () => controller.abort();
+  }, [hid, needed, data, attempt]);
+
+  return { data, error, retry: () => setAttempt((a) => a + 1) };
+}
+
+function RacesGate({ state, children }: { state: ReturnType<typeof useCoreRaces>; children: (d: CoreRaces) => React.ReactNode }) {
+  if (state.error) {
+    return (
+      <Card>
+        <p className="text-sm text-red-400 mb-2">{state.error}</p>
+        <button onClick={state.retry} className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-white/5">
+          Retry
+        </button>
+      </Card>
+    );
+  }
+  if (!state.data) return <Card><p className="text-sm text-[#9CA6B0]">Loading race history…</p></Card>;
+  return <>{children(state.data)}</>;
 }
