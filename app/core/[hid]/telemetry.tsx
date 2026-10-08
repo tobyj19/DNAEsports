@@ -8,7 +8,7 @@ import { Card } from "./ui";
 
 const DISTANCES = [1000, 1200, 1400, 1600, 1800, 2000, 2200];
 const WINDOW_SEC = 4; // every chart shows field average ± 4s, so rows compare directly
-const SMALL_SAMPLE = 5;
+const SMALL_SAMPLE = 25;
 const FASTER = "#4ADE80";
 const SLOWER = "#F87171";
 const FIELD = "#FB923C";
