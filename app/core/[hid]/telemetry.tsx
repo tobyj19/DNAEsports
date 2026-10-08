@@ -163,7 +163,7 @@ function DistanceRow({ t, vs }: { t: DistTelemetry; vs: string }) {
   const fasterPct = n ? (t.faster / n) * 100 : 0;
 
   return (
-    <div className={`grid grid-cols-1 md:grid-cols-[5.5rem_14rem_1fr] gap-x-4 gap-y-2 py-4 first:pt-1 last:pb-1 ${n === 0 || small ? "opacity-60" : ""}`}>
+    <div className={`grid grid-cols-1 md:grid-cols-[5.5rem_14rem_1fr] gap-x-4 gap-y-2 py-4 first:pt-1 last:pb-1 ${n === 0 ? "opacity-60" : ""}`}>
       <div>
         <div className="text-2xl font-extrabold italic tracking-tight leading-none">{t.distance}m</div>
         <div className="mt-1 text-xs text-muted">
