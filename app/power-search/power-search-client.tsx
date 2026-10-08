@@ -2,7 +2,8 @@
 
 import { useMemo, useRef, useState } from "react";
 import {
-  FULL_RANGE,
+  ID_RANGES,
+  TOTAL_IDS,
   MAX_CHUNK_SIZE,
   RACE_MODES,
   DEFAULT_FILTER,
@@ -60,7 +61,7 @@ export default function PowerSearchClient() {
     setMatches([]);
     cancelRef.current = false;
 
-    const chunks = buildChunks(FULL_RANGE.start, FULL_RANGE.end, MAX_CHUNK_SIZE);
+    const chunks = ID_RANGES.flatMap((r) => buildChunks(r.start, r.end, MAX_CHUNK_SIZE));
     setTotalChunks(chunks.length);
     setScannedChunks(0);
 
@@ -275,10 +276,10 @@ export default function PowerSearchClient() {
       {(running || scannedChunks > 0) && (
         <div className="mb-4">
           <div className="h-2 rounded bg-panel overflow-hidden mb-1">
-            <div className="h-full bg-mint transition-all" style={{ width: `${progressPct}%` }} />
+            <div className="h-full bg-cyan transition-all" style={{ width: `${progressPct}%` }} />
           </div>
           <p className="text-xs text-muted">
-            Scanned {Math.min(scannedChunks * MAX_CHUNK_SIZE, FULL_RANGE.end)} / {FULL_RANGE.end} core IDs (
+            Scanned {Math.min(scannedChunks * MAX_CHUNK_SIZE, TOTAL_IDS).toLocaleString()} / {TOTAL_IDS.toLocaleString()} core IDs (
             {progressPct}%) — {matches.length} match{matches.length === 1 ? "" : "es"} so far
           </p>
         </div>

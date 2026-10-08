@@ -8,13 +8,19 @@
 // scoped so a UI can drive it chunk-by-chunk (one serverless request per chunk)
 // instead of one giant request that would time out.
 //
-// Confirmed live range (Sep 2026): hids resolve from ~1 up to ~25,000, with gaps
-// for trainers, retired/burned cores, and unminted slots — not every hid in the
-// range is a real racing core, hence filtering out `type === "trainer"` and nulls.
+// Live ID blocks (Oct 2026): 1 to ~26,160 (original cores, growing as cores are
+// spliced) and 200,000 to ~200,342 (the new genesis series). Both ranges below
+// leave headroom for growth. Gaps inside them are trainers, retired/burned cores
+// and unminted slots, hence filtering out `type === "trainer"` and nulls. The
+// 100,001+ and 300,001+ blocks are internal / test records and are skipped.
 
 const API_BASE = "https://api.dnaracing.run/fbike";
 
-export const FULL_RANGE = { start: 1, end: 25000 } as const;
+export const ID_RANGES = [
+  { start: 1, end: 28500 },
+  { start: 200000, end: 201499 },
+] as const;
+export const TOTAL_IDS = ID_RANGES.reduce((n, r) => n + r.end - r.start + 1, 0);
 
 // Max hids one server request will process. Each chunk does ceil(size/BATCH_SIZE)
 // batches of mini_bulk + power_bulk (2 calls each), run at limited concurrency —

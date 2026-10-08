@@ -69,11 +69,18 @@ async function fetchBatch(start: number): Promise<GameCoreEntry[]> {
   }
 }
 
-/** Scans upward in waves until a batch comes back empty — the highest hid keeps
- * growing as new cores are spliced, so there's no fixed upper bound to hardcode. */
-async function buildIndex(): Promise<GameCoreEntry[]> {
+/** Core IDs come in separate blocks with big gaps between them (Oct 2026):
+ *   1 – ~26,160        the original game cores, growing as cores are spliced
+ *   200,000 – ~200,342 the new genesis series, growing as they're minted
+ * The 100,001+ ("Group N Total") and 300,001+ ("Fake …") blocks are internal /
+ * test records and are deliberately skipped. */
+const ID_SERIES_STARTS = [1, 200_000];
+
+/** Scans one block upward in waves until a batch comes back empty — the highest
+ * hid in each block keeps growing, so there's no fixed upper bound to hardcode. */
+async function scanSeries(first: number): Promise<GameCoreEntry[]> {
   const entries: GameCoreEntry[] = [];
-  let start = 1;
+  let start = first;
   for (;;) {
     const starts = Array.from({ length: PARALLEL_BATCHES }, (_, i) => start + i * ID_BATCH);
     const batches = await Promise.all(starts.map(fetchBatch));
@@ -82,6 +89,11 @@ async function buildIndex(): Promise<GameCoreEntry[]> {
     start += PARALLEL_BATCHES * ID_BATCH;
   }
   return entries;
+}
+
+async function buildIndex(): Promise<GameCoreEntry[]> {
+  const series = await Promise.all(ID_SERIES_STARTS.map(scanSeries));
+  return series.flat();
 }
 
 let cached: { builtAt: number; entries: GameCoreEntry[] } | null = null;
