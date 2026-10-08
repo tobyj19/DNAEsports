@@ -1,62 +1,126 @@
 // lib/breederScore.ts
 //
-// Breeder Score per core and mode, precomputed from the research crawl by
-// research/breeder-score.py (--site lib/data/breeder-scores.json). The score is
-// a 0-100 percentile of breeding value among cores with real evidence; it mixes
-// the core's own stats with what it has bred (progeny test). Only import this
-// from server code (page.tsx): the data file is ~2 MB, so the page reads it here
-// and passes one core's entry down. Client components use `import type` only.
+// Breeding Score and Breeder Rating per core and mode, precomputed from the
+// research crawl by research/breeder-score.py (--site lib/data/breeder-scores.json).
+//   Breeding Score  how good its offspring should be — from its own stats and parents
+//   Breeder Rating  how good its offspring have been — from rated offspring only
+// Both are 0-100 percentiles graded S+ ... D-. Only import this from server code
+// (page.tsx): the data file is ~3 MB, so the page reads it here and passes small
+// per-core entries down. Client components use `import type` only.
 
 import data from "./data/breeder-scores.json";
 import type { RaceMode } from "./gameCoreSearch";
 
-export type BreederTier = "S" | "A" | "B" | "C" | "D";
-export type BreederConfidence = "Proven" | "Some evidence" | "Own stats only" | "Few offspring" | "Pedigree estimate";
-export type BreederSource = "own" | "own+progeny" | "progeny" | "pedigree";
+export type Grade =
+  | "S+" | "S" | "S-"
+  | "A+" | "A" | "A-"
+  | "B+" | "B" | "B-"
+  | "C+" | "C" | "C-"
+  | "D+" | "D" | "D-";
 
-export interface BreederScore {
-  score: number; // 0-100 percentile
-  tier: BreederTier;
-  confidence: BreederConfidence;
+export type BreedingSource = "Official ratings" | "Early results + parents" | "Early results" | "Parents only";
+export type RatingConfidence = "Proven" | "Some evidence" | "Early read";
+
+export interface ScoreParts {
+  pwr: number;
+  adj: number;
+  win: number;
+  place: number;
+  beats: number;
+}
+
+interface ScoreBase {
+  /** 0-100 percentile, one decimal. */
+  score: number;
+  grade: Grade;
+  /** Each trait's weighted pull on the value vs an average core (0 = average). */
+  parts: ScoreParts;
+  weights: ScoreParts;
+}
+
+export interface BreedingScore extends ScoreBase {
+  source: BreedingSource;
+}
+
+export interface BreederRating extends ScoreBase {
+  confidence: RatingConfidence;
   ratedOffspring: number;
-  source: BreederSource;
-  /** Each component's weighted contribution to the breeding value (z units; 0 = average). */
-  parts: { pwr: number; adj: number; win: number; place: number; beats: number };
-  weights: { pwr: number; adj: number; win: number; place: number; beats: number };
+}
+
+export interface ModeScores {
+  breeding: BreedingScore | null;
+  rating: BreederRating | null;
 }
 
 export interface BreederScores {
   generated: string;
-  modes: Partial<Record<RaceMode, BreederScore>>;
+  modes: Partial<Record<RaceMode, ModeScores>>;
 }
 
 interface RawFile {
   generated: string;
-  weights: Record<RaceMode, BreederScore["weights"]>;
-  tiers: [BreederTier, number][];
-  confidence: BreederConfidence[];
-  sources: BreederSource[];
-  cores: Record<string, Partial<Record<RaceMode, number[]>>>;
+  weights: Record<RaceMode, ScoreParts>;
+  grades: [Grade, number][];
+  breedingSources: BreedingSource[];
+  ratingConfidence: RatingConfidence[];
+  cores: Record<string, Partial<Record<RaceMode, { b?: number[]; r?: number[] }>>>;
 }
 
 const FILE = data as unknown as RawFile;
+
+export function gradeFor(score: number): Grade {
+  return FILE.grades.find(([, min]) => score >= min)?.[0] ?? "D-";
+}
+
+const toParts = ([pwr, adj, win, place, beats]: number[]): ScoreParts => ({ pwr, adj, win, place, beats });
 
 export function getBreederScores(hid: number): BreederScores {
   const entry = FILE.cores[String(hid)] ?? {};
   const modes: BreederScores["modes"] = {};
   for (const mode of Object.keys(entry) as RaceMode[]) {
-    const r = entry[mode];
-    if (!r) continue;
-    const [score, conf, ratedOffspring, source, pwr, adj, win, place, beats] = r;
+    const e = entry[mode];
+    if (!e) continue;
+    const weights = FILE.weights[mode];
     modes[mode] = {
-      score,
-      tier: FILE.tiers.find(([, min]) => score >= min)?.[0] ?? "D",
-      confidence: FILE.confidence[conf],
-      ratedOffspring,
-      source: FILE.sources[source],
-      parts: { pwr, adj, win, place, beats },
-      weights: FILE.weights[mode],
+      breeding: e.b
+        ? { score: e.b[0], grade: gradeFor(e.b[0]), source: FILE.breedingSources[e.b[1]], parts: toParts(e.b.slice(2)), weights }
+        : null,
+      rating: e.r
+        ? {
+            score: e.r[0],
+            grade: gradeFor(e.r[0]),
+            confidence: FILE.ratingConfidence[e.r[1]],
+            ratedOffspring: e.r[2],
+            parts: toParts(e.r.slice(3)),
+            weights,
+          }
+        : null,
     };
   }
   return { generated: FILE.generated, modes };
+}
+
+export interface GradeChip {
+  score: number;
+  grade: Grade;
+}
+
+/** Just the two grades per mode, for badges on many cores (e.g. a family). */
+export type BreederGrades = Record<number, Partial<Record<RaceMode, { breeding: GradeChip | null; rating: GradeChip | null }>>>;
+
+export function getBreederGrades(hids: number[]): BreederGrades {
+  const out: BreederGrades = {};
+  for (const hid of hids) {
+    const { modes } = getBreederScores(hid);
+    out[hid] = Object.fromEntries(
+      Object.entries(modes).map(([m, v]) => [
+        m,
+        {
+          breeding: v.breeding ? { score: v.breeding.score, grade: v.breeding.grade } : null,
+          rating: v.rating ? { score: v.rating.score, grade: v.rating.grade } : null,
+        },
+      ])
+    );
+  }
+  return out;
 }

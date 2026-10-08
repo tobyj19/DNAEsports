@@ -11,8 +11,8 @@ import { Card, Chip, DEFAULT_ACCENT, ELEMENT_ACCENT, MODE_ICON, Meter, Ring, for
 import Telemetry from "./telemetry";
 import Estimates from "./estimates";
 import RaceHistory from "./race-history";
-import BreederScoreCard from "./breeder-score";
-import type { BreederScores } from "@/lib/breederScore";
+import BreederScoreCards, { GradeBadges } from "./breeder-score";
+import type { BreederGrades, BreederScores } from "@/lib/breederScore";
 
 const MODES: RaceMode[] = ["bike", "car", "horse"];
 type Tab = "overview" | "telemetry" | "estimates" | "races" | "distances" | "family";
@@ -32,10 +32,12 @@ export default function CoreProfileClient({
   info,
   initialMode,
   breeder,
+  familyGrades,
 }: {
   info: CoreInfo;
   initialMode: RaceMode | null;
   breeder: BreederScores;
+  familyGrades: BreederGrades;
 }) {
   // Default to the mode the core has raced most.
   const busiest = [...MODES].sort((a, b) => info.modes[b].racesRun - info.modes[a].racesRun)[0];
@@ -120,7 +122,7 @@ export default function CoreProfileClient({
           </RacesGate>
         )}
         {tab === "distances" && <Distances info={info} mode={mode} accent={accent} />}
-        {tab === "family" && <Family info={info} mode={mode} />}
+        {tab === "family" && <Family info={info} mode={mode} breeder={breeder} tiers={familyGrades} />}
       </div>
     </div>
   );
@@ -206,7 +208,7 @@ function Overview({ info, mode, accent, breeder }: { info: CoreInfo; mode: RaceM
         )}
       </Card>
 
-      <BreederScoreCard scores={breeder} mode={mode} />
+      <BreederScoreCards scores={breeder} mode={mode} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Meter
@@ -409,7 +411,7 @@ const OFFSPRING_SORTS: { id: OffspringSort; label: string }[] = [
   { id: "adjOdds", label: "ADJ" },
 ];
 
-function Family({ info, mode }: { info: CoreInfo; mode: RaceMode }) {
+function Family({ info, mode, breeder, tiers }: { info: CoreInfo; mode: RaceMode; breeder: BreederScores; tiers: BreederGrades }) {
   const [sort, setSort] = useState<OffspringSort>("default");
   const offspring =
     sort === "default"
@@ -421,13 +423,14 @@ function Family({ info, mode }: { info: CoreInfo; mode: RaceMode }) {
 
   return (
     <>
+      <BreederScoreCards scores={breeder} mode={mode} />
       <Card title={`Parents · ${mode}`}>
         {!info.father && !info.mother ? (
           <p className="text-sm text-muted">{info.type === "genesis" ? "Genesis core — no parents." : "No parent data."}</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <CoreLink core={info.father} role="Father" mode={mode} />
-            <CoreLink core={info.mother} role="Mother" mode={mode} />
+            <CoreLink core={info.father} role="Father" mode={mode} tiers={tiers} />
+            <CoreLink core={info.mother} role="Mother" mode={mode} tiers={tiers} />
           </div>
         )}
       </Card>
@@ -465,7 +468,7 @@ function Family({ info, mode }: { info: CoreInfo; mode: RaceMode }) {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {offspring.map((c) => (
-                <CoreLink key={c.hid} core={c} mode={mode} />
+                <CoreLink key={c.hid} core={c} mode={mode} tiers={tiers} />
               ))}
             </div>
           </>
@@ -507,7 +510,7 @@ function MiniPower({ stats }: { stats: CoreRef["power"][RaceMode] }) {
   );
 }
 
-function CoreLink({ core, role, mode }: { core: CoreRef | null; role?: string; mode: RaceMode }) {
+function CoreLink({ core, role, mode, tiers }: { core: CoreRef | null; role?: string; mode: RaceMode; tiers?: BreederGrades }) {
   if (!core) {
     return (
       <div className="rounded-xl border border-white/[0.07] bg-black/20 p-3 text-sm text-muted">
@@ -523,8 +526,11 @@ function CoreLink({ core, role, mode }: { core: CoreRef | null; role?: string; m
       className="group rounded-xl border border-white/[0.07] bg-black/20 p-3 transition-colors hover:border-white/20 hover:bg-white/[0.04]"
     >
       {role && <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{role}</div>}
-      <div className="flex items-center justify-between">
-        <span className="font-semibold group-hover:text-white">{core.name}</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-semibold group-hover:text-white">{core.name}</span>
+          <GradeBadges entry={tiers?.[core.hid]?.[mode]} />
+        </span>
         <span className="text-xs" style={{ color: accent }}>#{core.hid}</span>
       </div>
       <div className="text-xs capitalize text-muted">

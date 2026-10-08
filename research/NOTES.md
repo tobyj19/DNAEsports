@@ -80,6 +80,23 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
   lines, so "preferred" often lands on 900/1000 or 2200/2300 — trust the lean/type more
   than the exact metre figure unless the profile actually curves.
 
+### Breeding Score + Breeder Rating v2 (Oct 8, supersedes v1 below)
+
+- Split in two (owner's call). **Breeding Score** = prediction from own stats + parents
+  (h2·own z + (1−h2)·parents' average; parents only when no own value). **Breeder Rating** =
+  track record from rated offspring only (progeny test, shrunk by offspring count).
+- Unrated cores' own race results (win/place) now count → bike Breeding Score for 19,125
+  cores (9,938 official, 7,556 early results + parents, 1,247 early results, 384 parents
+  only); genesis 3,622 / 4,296. Breeder Rating for 8,384 bike cores (401 Proven 8+,
+  1,868 Some evidence 3–7, 6,115 Early read 1–2).
+- Grades S+ S S- A+ A A- B+ B B- C+ C C- D+ D D- at percentiles 99.5/99/98/96/93/90/83/77/70/57/43/30/20/10/0.
+  Cut-offs: officially rated cores (Breeding), cores with 3+ rated offspring (Rating).
+- Validation (held-out offspring, overall stats): Breeding Score r 0.70/0.52/0.54 vs PWR-only
+  0.67/0.45/0.45; best estimate (both combined) 0.71/0.53/0.55. Parents with 5+ offspring,
+  bike: PWR 0.32, Breeding 0.39, Rating 0.37, combined 0.41.
+- Site: Overview + Family tabs show both cards; family tiles show the Breeding grade and an
+  "R" Breeder Rating grade.
+
 ### Breeder Score v1 (Oct 8 — `breeder-score.py --dir research-data --out research-data/breeder-scores.json`, after star-analysis.py)
 
 - Weights (approved): PWR 45, ADJ 20/25/25, Win 15, Place 10, Beats-sims 10/5/5 (bike/car/horse);
