@@ -5,7 +5,8 @@ const GAME_LINKS = [
   { href: "/core-search", label: "Core Search", desc: "Any core by name or ID — full profile, telemetry, PWR/VAR" },
   { href: "/power-search", label: "Power Search", desc: "Scan every core by Power, Variance and AdjOdds" },
   { href: "/race-sim", label: "Race Sim", desc: "Simulate a race from per-distance estimates" },
-  { href: "/breeding", label: "Breeding", desc: "Pairings, distance categories and the Splice Arena" },
+  { href: "/breeding/finder", label: "Pair Finder", desc: "Best pairs across your vaults, the stud barn and the market" },
+  { href: "/breeding/predict", label: "Pair Predictor", desc: "What two cores should produce, with jackpot odds" },
 ];
 
 const ESPORTS_LINKS = [

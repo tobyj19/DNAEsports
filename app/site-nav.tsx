@@ -13,7 +13,6 @@ const SECTIONS: Record<Section, { label: string; home: string; links: { href: st
       { href: "/core-search", label: "Core Search" },
       { href: "/power-search", label: "Power Search" },
       { href: "/race-sim", label: "Race Sim" },
-      { href: "/breeding", label: "Breeding" },
       { href: "/breeding/predict", label: "Pair Predictor" },
       { href: "/breeding/finder", label: "Pair Finder" },
     ],
