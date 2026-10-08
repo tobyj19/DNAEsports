@@ -12,6 +12,7 @@
 // so it isn't available here.
 
 import type { RaceMode } from "./gameCoreSearch";
+import { fetchHstats } from "./esports-hstats";
 
 const API_BASE = "https://api.dnaracing.run/fbike";
 
@@ -145,6 +146,9 @@ export interface CoreInfo {
     arenaPriceUsd: number | null;
   } | null;
   listing: { amount: number; token: string } | null;
+  /** Pro League esports races (bike only). They count toward Races Run but aren't in the
+   * race history feed, so Race History shows them in a separate Esports view. */
+  esportsRaces: number;
   father: CoreRef | null;
   mother: CoreRef | null;
   offspring: CoreRef[];
@@ -207,11 +211,12 @@ async function fetchRefs(hids: number[]): Promise<Map<number, CoreRef>> {
 }
 
 export async function getCoreInfo(hid: number): Promise<CoreInfo | null> {
-  const [info, listing, splicing, assets] = await Promise.all([
+  const [info, listing, splicing, assets, esports] = await Promise.all([
     post<RawInfo>("/i/info", { hid }),
     post<{ dna: { amt: number; token: string } | null }>("/cores/listing_price", { hid }),
     post<{ parents: { father: number | null; mother: number | null } | null }>("/cores/splicing_info", { hid }),
     post<{ trailsmap: Partial<Record<RaceMode, string | null>> | null }>("/cores/attached_assets", { hid }),
+    fetchHstats(hid),
   ]);
   if (!info || !info.name) return null;
 
@@ -275,6 +280,7 @@ export async function getCoreInfo(hid: number): Promise<CoreInfo | null> {
         }
       : null,
     listing: listing?.dna ? { amount: listing.dna.amt, token: listing.dna.token } : null,
+    esportsRaces: esports?.data?.career?.all?.races_n ?? 0,
     father: fatherHid != null ? refs.get(fatherHid) ?? null : null,
     mother: motherHid != null ? refs.get(motherHid) ?? null : null,
     offspring: offspringHids.map((h) => refs.get(h)).filter((r): r is CoreRef => r != null),

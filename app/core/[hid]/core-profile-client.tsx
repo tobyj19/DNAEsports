@@ -97,7 +97,16 @@ export default function CoreProfileClient({ info, initialMode }: { info: CoreInf
         {tab === "estimates" && <RacesGate state={races}>{(d) => <Estimates estimates={d.estimates[mode]} official={info.modes[mode]} mode={mode} />}</RacesGate>}
         {tab === "races" && (
           <RacesGate state={races}>
-            {(d) => <RaceHistory races={d.races} mode={mode} tourneyProfit={d.tourneyProfit} accent={accent} />}
+            {(d) => (
+              <RaceHistory
+                hid={info.hid}
+                races={d.races}
+                mode={mode}
+                tourneyProfit={d.tourneyProfit}
+                esportsRaces={info.esportsRaces}
+                accent={accent}
+              />
+            )}
           </RacesGate>
         )}
         {tab === "distances" && <Distances info={info} mode={mode} accent={accent} />}
@@ -199,7 +208,12 @@ function Overview({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acce
         />
         <Meter label="Special Stamina" icon="✨" value={info.spStamina.current} max={info.spStamina.max} from="#D97706" to="#FACC15" sub="SP" />
         <Meter label="Races Remaining" icon="⏳" value={m.ageingLeft} max={MAX_AGEING} from="#2563EB" to="#38BDF8" sub={`${mode} lifespan`} />
-        <Meter label="Races Run" icon="🏁" value={m.racesRun} max={MAX_AGEING} from="#059669" to="#34D399" sub={`${mode} races on record`} />
+        <Meter label="Races Run" icon="🏁" value={m.racesRun} max={MAX_AGEING} from="#059669" to="#34D399" sub={
+            mode === "bike" && info.esportsRaces > 0
+              ? `Lifetime total · includes ${info.esportsRaces.toLocaleString("en-US")} Pro League esports races`
+              : `Lifetime total of ${mode} races`
+          }
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

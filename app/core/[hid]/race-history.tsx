@@ -7,6 +7,7 @@ import { GATE_FILTERS, PAYOUT_FILTERS, isGridlockRace, isOneGateRace, isQuestRac
 import type { RaceMode } from "@/lib/gameCoreSearch";
 import { getFieldTime } from "@/lib/fieldTimes";
 import { Card } from "./ui";
+import EsportsHistory from "./esports-history";
 
 type View = "history" | "distro" | "speed";
 type PaidFilter = "all" | "paid" | "free";
@@ -22,7 +23,7 @@ function toggleIn(set: Set<string>, id: string): Set<string> {
   return next;
 }
 
-export default function RaceHistory({
+function RegularHistory({
   races,
   mode,
   tourneyProfit,
@@ -341,5 +342,67 @@ function SpeedTrend({ races, accent }: { races: SlimRace[]; accent: string }) {
         </ResponsiveContainer>
       )}
     </Card>
+  );
+}
+
+type Source = "regular" | "esports";
+
+/** Race History with a Regular / Esports switch. Pro League esports races count toward a
+ * core's Races Run but aren't in the race history feed, and the league only publishes
+ * them as totals — so they get their own view rather than being mixed in. */
+export default function RaceHistory({
+  hid,
+  races,
+  mode,
+  tourneyProfit,
+  esportsRaces,
+  accent,
+}: {
+  hid: number;
+  races: SlimRace[];
+  mode: RaceMode;
+  tourneyProfit: number;
+  esportsRaces: number;
+  accent: string;
+}) {
+  const [source, setSource] = useState<Source>("regular");
+  const regularCount = races.filter((r) => r.mode === mode).length;
+  const hasEsports = mode === "bike" && esportsRaces > 0;
+  const showEsports = hasEsports && source === "esports";
+
+  return (
+    <>
+      {hasEsports && (
+        <Card>
+          <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/[0.07] bg-black/20 p-1">
+            {(
+              [
+                ["regular", "Regular races", regularCount],
+                ["esports", "Esports races", esportsRaces],
+              ] as [Source, string, number][]
+            ).map(([id, label, n]) => (
+              <button
+                key={id}
+                onClick={() => setSource(id)}
+                className={`rounded-lg px-3 py-2 text-sm transition-colors ${source === id ? "text-ink font-semibold" : "text-muted hover:text-white"}`}
+                style={source === id ? { background: accent } : undefined}
+              >
+                {label} <span className="tabular-nums opacity-80">· {n.toLocaleString("en-US")}</span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-muted">
+            {showEsports
+              ? "Pro League esports races — kept separate because the league only publishes them as totals."
+              : `${regularCount.toLocaleString("en-US")} regular races from the game's race history (quest, gridlock and 1-gate races are hidden by default — use the switches below). Pro League esports races are in the Esports view.`}
+          </p>
+        </Card>
+      )}
+      {showEsports ? (
+        <EsportsHistory hid={hid} accent={accent} />
+      ) : (
+        <RegularHistory races={races} mode={mode} tourneyProfit={tourneyProfit} accent={accent} />
+      )}
+    </>
   );
 }
