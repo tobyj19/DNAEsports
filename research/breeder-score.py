@@ -50,6 +50,8 @@ BREEDING_SOURCES = ["Official ratings", "Early results + parents", "Early result
 RATING_CONF = ["Proven", "Some evidence", "Early read"]
 GENERATED = "2026-10-08"  # date of the research crawl these scores come from
 RESULTS_K = 30            # pseudo-races of mode-average results mixed into each core
+RESID_INFLATE = 1.22      # in-sample spread is optimistic (parents' estimates already include those offspring);
+                          # 1.22 makes the 80% range hold 80% of held-out offspring (see --validate)
 
 
 def mean_sd(vals):
@@ -184,11 +186,42 @@ def score_mode(mode, lineage, power, results, star, holdout=frozenset()):
     total = lambda comp: sum(W[c] * comp[c] for c in COMPONENTS) / 100
     return {
         "breeding": breeding, "rating": rating, "best": best, "own": own, "prog": prog, "h2": h2,
+        "icpt": icpt, "stats": stats,
         "breeding_total": {h: total(v) for h, v in breeding.items()},
         "rating_total": {h: total(v) for h, v in rating.items()},
         "best_total": {h: total(v) for h, v in best.items() if v is not None},
         "source": {h: src(h) for h in breeding}, "official": official,
         "n_off": {h: len(prog[h]["pwr"]) if "pwr" in prog[h] else max(len(v) for v in prog[h].values()) for h in prog},
+    }
+
+
+def pair_model(mode, s, lineage):
+    """Everything the site needs to predict a pair's offspring from the parents' best estimates.
+    Offspring z per trait = a + (father best + mother best) / 2; residual spread measured on real offspring."""
+    W = WEIGHTS[mode]
+    best, own, icpt = s["best"], s["own"], s["icpt"]
+    res = {c: [] for c in COMPONENTS}; comp_res = []
+    for h, l in lineage.items():
+        fa, mo = l["father"], l["mother"]
+        if not (fa and mo) or best.get(fa) is None or best.get(mo) is None or h not in own:
+            continue
+        pred = {c: icpt[c] + (best[fa][c] + best[mo][c]) / 2 for c in COMPONENTS}
+        for c in COMPONENTS:
+            if c in own[h]:
+                res[c].append(own[h][c] - pred[c])
+        if h in s["official"]:
+            comp_res.append(sum(W[c] * (own[h].get(c, 0.0) - pred[c]) for c in COMPONENTS) / 100)
+    sd = lambda v: math.sqrt(sum(x * x for x in v) / len(v))
+    q = lambda vals: [round(vals[int(i * (len(vals) - 1) / 200)], 4) for i in range(201)]
+    official = [h for h in s["official"] if h in own]
+    return {
+        "icpt": {c: round(icpt[c], 4) for c in COMPONENTS},
+        "stats": {c: [round(s["stats"][c][0], 5), round(s["stats"][c][1], 5)] for c in COMPONENTS},  # mean, sd in real units
+        "residSd": {c: round(RESID_INFLATE * sd(res[c]), 4) for c in COMPONENTS},
+        "compositeResidSd": round(RESID_INFLATE * sd(comp_res), 4),
+        # 201 quantiles: Breeding Score totals of rated cores (-> grade), and their own overall stats (-> "top x%" odds)
+        "breedingQuantiles": q(sorted(s["breeding_total"][h] for h in s["official"] if h in s["breeding_total"])),
+        "overallQuantiles": q(sorted(sum(W[c] * own[h].get(c, 0.0) for c in COMPONENTS) / 100 for h in official)),
     }
 
 
@@ -220,7 +253,23 @@ def validate(lineage, power, results, star):
                              (rt[fa] + rt[mo]) / 2 if both_rated else None, (ft[fa] + ft[mo]) / 2, target,
                              min(s["n_off"].get(fa, 0), s["n_off"].get(mo, 0))))
         sub = [r for r in rows if r[0] is not None]
-        print(f"\n=== {mode}: {len(sub)} held-out offspring (predicting their overall stats)")
+        # pair predictor accuracy on real PWR (model fitted with the offspring hidden)
+        errs, inside = [], 0
+        for half in (0, 1):
+            hold = frozenset(h for h in kids if h % 2 == half)
+            sm = score_mode(mode, lineage, power, results, star, holdout=hold)
+            pm = pair_model(mode, sm, {h: l for h, l in lineage.items() if h not in hold})
+            mean, sdv = pm["stats"]["pwr"]
+            for h in hold:
+                fa, mo = lineage[h]["father"], lineage[h]["mother"]
+                if sm["best"].get(fa) is None or sm["best"].get(mo) is None or (h, mode) not in power:
+                    continue
+                pred = mean + sdv * (pm["icpt"]["pwr"] + (sm["best"][fa]["pwr"] + sm["best"][mo]["pwr"]) / 2)
+                err = power[(h, mode)]["pwr"] - pred
+                errs.append(err); inside += abs(err) <= 1.2816 * pm["residSd"]["pwr"] * sdv
+        print(f"\n=== {mode}: pair predictor on {len(errs)} held-out offspring: PWR mean abs error {sum(abs(e) for e in errs) / len(errs):.2f},"
+              f" bias {sum(errs) / len(errs):+.2f}, 80% range contains the real PWR {100 * inside / len(errs):.0f}% of the time")
+        print(f"=== {mode}: {len(sub)} held-out offspring (predicting their overall stats)")
         print(f"  parents' PWR only {pearson([r[0] for r in sub], [r[4] for r in sub]):.3f}"
               f" | Breeding Score {pearson([r[1] for r in sub], [r[4] for r in sub]):.3f}"
               f" | combined {pearson([r[3] for r in sub], [r[4] for r in sub]):.3f}")
@@ -245,7 +294,7 @@ def main():
         validate(lineage, power, results, star)
         return
 
-    out = defaultdict(dict); summary = {}; trait_cuts = {}
+    out = defaultdict(dict); summary = {}; trait_cuts = {}; pair_models = {}
     for mode in MODES:
         s = score_mode(mode, lineage, power, results, star)
         # per-trait cut points (p20/p40/p60/p80/p95 of officially rated cores' potential) for plain-language labels
@@ -253,6 +302,7 @@ def main():
         for c in COMPONENTS:
             vals = sorted(s["breeding"][h][c] for h in s["official"] if h in s["breeding"])
             trait_cuts[mode][c] = [round(vals[int(q * (len(vals) - 1))], 3) for q in (0.2, 0.4, 0.6, 0.8, 0.95)]
+        pair_models[mode] = pair_model(mode, s, lineage)
         bp = percentiles(s["breeding_total"], s["official"])
         n_off = s["n_off"]
         rp = percentiles(s["rating_total"], [h for h in s["rating_total"] if n_off.get(h, 0) >= 3])
@@ -264,6 +314,9 @@ def main():
                 n = n_off.get(h, 0)
                 e["r"] = [round(rp[h], 1), 0 if n >= 8 else 1 if n >= 3 else 2, n] + \
                          [round(WEIGHTS[mode][c] * s["rating"][h][c] / 100, 2) or 0 for c in COMPONENTS]
+            if s["best"].get(h) is not None:
+                # best estimate per trait (unweighted), for predicting a pair's offspring
+                e["x"] = [round(s["best"][h][c], 3) or 0 for c in COMPONENTS]
             out[h][mode] = e
         gen = [h for h, l in lineage.items() if l["type"] == "genesis"]
         summary[mode] = {
@@ -289,9 +342,10 @@ def main():
     if a.site:
         # cores[hid][mode] = { b: [pct, source#, 5 weighted parts], r: [pct, confidence#, offspring, 5 weighted parts] }
         # traitCuts[mode][trait] = unweighted value at p20/p40/p60/p80/p95 of rated cores
+        # x = best estimate per trait (unweighted); pairModel[mode] = see pair_model()
         with open(a.site, "w") as f:
             json.dump({"generated": GENERATED, "weights": WEIGHTS, "grades": GRADES, "breedingSources": BREEDING_SOURCES,
-                       "ratingConfidence": RATING_CONF, "traitCuts": trait_cuts, "cores": out}, f, separators=(",", ":"))
+                       "ratingConfidence": RATING_CONF, "traitCuts": trait_cuts, "pairModel": pair_models, "cores": out}, f, separators=(",", ":"))
         print(f"wrote {a.site} ({os.path.getsize(a.site) // 1024} KB)")
 
 

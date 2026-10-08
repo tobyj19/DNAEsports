@@ -68,13 +68,38 @@ interface RawFile {
   breedingSources: BreedingSource[];
   ratingConfidence: RatingConfidence[];
   traitCuts: Record<RaceMode, TraitCuts>;
-  cores: Record<string, Partial<Record<RaceMode, { b?: number[]; r?: number[] }>>>;
+  pairModel: Record<RaceMode, PairModel>;
+  cores: Record<string, Partial<Record<RaceMode, { b?: number[]; r?: number[]; x?: number[] }>>>;
+}
+
+/** Model for predicting a pair's offspring (see pair_model() in research/breeder-score.py). */
+export interface PairModel {
+  icpt: ScoreParts; // offspring z = icpt + (father x + mother x) / 2
+  stats: Record<keyof ScoreParts, [number, number]>; // mean, sd in real units
+  residSd: ScoreParts; // spread of real offspring around the prediction (z units)
+  compositeResidSd: number;
+  breedingQuantiles: number[]; // 201 quantiles of rated cores' Breeding Score totals
+  overallQuantiles: number[]; // 201 quantiles of rated cores' own overall stats
 }
 
 const FILE = data as unknown as RawFile;
 
 export function gradeFor(score: number): Grade {
   return FILE.grades.find(([, min]) => score >= min)?.[0] ?? "D-";
+}
+
+/** Best estimate per trait (unweighted) for predicting offspring; null when the core has no data in this mode. */
+export function getBestX(hid: number, mode: RaceMode): ScoreParts | null {
+  const x = FILE.cores[String(hid)]?.[mode]?.x;
+  return x ? toParts(x) : null;
+}
+
+export function getPairModel(mode: RaceMode): PairModel {
+  return FILE.pairModel[mode];
+}
+
+export function getWeights(mode: RaceMode): ScoreParts {
+  return FILE.weights[mode];
 }
 
 const toParts = ([pwr, adj, win, place, beats]: number[]): ScoreParts => ({ pwr, adj, win, place, beats });

@@ -80,6 +80,20 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
   lines, so "preferred" often lands on 900/1000 or 2200/2300 — trust the lean/type more
   than the exact metre figure unless the profile actually curves.
 
+### Pair predictor + Pair Finder (Oct 8)
+
+- Fixed rules (lineage, ~15k offspring): element = dominant of water > earth > fire > metal;
+  type: genesis×genesis → morphed, genesis×morphed / morphed×morphed / genesis×freak → freak,
+  anything else → xclass; **F# = father F# + mother F#** (80/80 checked via mini_bulk).
+- Offspring z per trait = a + (father best + mother best) / 2 (`pair_model()`, exported as
+  `pairModel` + per-core `x` in lib/data/breeder-scores.json). Held-out PWR error: bike 2.6
+  (bias −0.2), car 3.1, horse 3.2 — vs parents' average 4.0 (bias −3.5) / 3.1 / 3.4.
+  80% ranges widened ×1.22 (RESID_INFLATE) so they hold ~78–79% of real offspring.
+- Marketplace listings: POST /fbike/dnamarket/listings/new {asset_type:"core", filt:{rvmode}}
+  (undocumented; found in market.dnaracing.run code). Stud barn: /fbike/splicing3/arena_v2.
+- Site: /breeding/predict (Pair Predictor), /breeding/finder (Pair Finder, /api/pair-finder):
+  vault × stud barn × marketplace, never stud × stud, each core max 3× in results.
+
 ### Breeding Score + Breeder Rating v2 (Oct 8, supersedes v1 below)
 
 - Split in two (owner's call). **Breeding Score** = prediction from own stats + parents

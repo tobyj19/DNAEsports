@@ -14,6 +14,8 @@ const SECTIONS: Record<Section, { label: string; home: string; links: { href: st
       { href: "/power-search", label: "Power Search" },
       { href: "/race-sim", label: "Race Sim" },
       { href: "/breeding", label: "Breeding" },
+      { href: "/breeding/predict", label: "Pair Predictor" },
+      { href: "/breeding/finder", label: "Pair Finder" },
     ],
   },
   esports: {
@@ -47,6 +49,10 @@ function sectionFor(path: string): Section | null {
 export default function SiteNav() {
   const path = usePathname() ?? "/";
   const section = sectionFor(path);
+  // Most specific link wins, so /breeding/predict highlights "Pair Predictor", not "Breeding".
+  const active = section
+    ? SECTIONS[section].links.filter((l) => matches(path, l.href)).sort((a, b) => b.href.length - a.href.length)[0]?.href
+    : undefined;
 
   return (
     <header className="border-b border-line">
@@ -78,7 +84,7 @@ export default function SiteNav() {
               <Link
                 key={l.href}
                 href={l.href}
-                className={`transition-colors hover:text-white ${matches(path, l.href) ? "text-white" : ""}`}
+                className={`transition-colors hover:text-white ${l.href === active ? "text-white" : ""}`}
               >
                 {l.label}
               </Link>

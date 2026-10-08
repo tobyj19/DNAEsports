@@ -387,7 +387,7 @@ interface ArenaResponse {
 }
 
 export interface ArenaFilter {
-  rvmode?: "bike";
+  rvmode?: "bike" | "car" | "horse";
   use_powerstats?: boolean;
   adjodds?: { mi: number; mx: number };
 }
@@ -401,8 +401,8 @@ export interface ArenaFilter {
  * from the live request are used — so this always returns the full unfiltered
  * page 0 and any narrowing happens client-side.
  */
-export async function fetchArenaCoreIds(): Promise<ArenaCoreEntry[]> {
-  const filter: ArenaFilter = { rvmode: "bike", use_powerstats: true, adjodds: { mi: 0, mx: 100 } };
+export async function fetchArenaCoreIds(rvmode: ArenaFilter["rvmode"] = "bike"): Promise<ArenaCoreEntry[]> {
+  const filter: ArenaFilter = { rvmode, use_powerstats: true, adjodds: { mi: 0, mx: 100 } };
   const data = await postJson<ArenaResponse>("/fbike/splicing3/arena_v2", { f: filter, search: null });
   return data.result.cores;
 }
@@ -430,4 +430,105 @@ export async function fetchArenaCores(): Promise<Core[]> {
   return enrichCoreBasics(basics);
 }
 
+/** Name / element / type / gender / F# for many cores at once (chunked). */
+export async function fetchMiniInfo(hids: number[]): Promise<MiniInfo[]> {
+  const out: MiniInfo[] = [];
+  for (let i = 0; i < hids.length; i += 500) {
+    const r = await postJson<MiniBulkResponse>("/fbike/cores/mini_bulk", { hids: hids.slice(i, i + 500) });
+    out.push(...r.result.filter((m): m is MiniInfo => m != null));
+  }
+  return out;
+}
+
+/** Splices left this cycle per core (owner splicing limits). */
+export async function fetchSplicesLeft(hids: number[]): Promise<Map<number, number>> {
+  const out = new Map<number, number>();
+  for (let i = 0; i < hids.length; i += 500) {
+    const r = await postJson<SplicingInfoBulkResponse>("/fbike/cores/splicing_info_bulk", { hids: hids.slice(i, i + 500) });
+    for (const s of r.result) {
+      if (s?.splice_core) out.set(s.hid, Math.max(0, s.splice_core.mxcycle_splices_n - s.splice_core.cycle_splices_n));
+    }
+  }
+  return out;
+}
+
+export interface MarketListing {
+  hid: number;
+  name: string;
+  element: string;
+  type: string;
+  gender: "male" | "female";
+  fno: number;
+  priceUsd: number;
+  price: string; // e.g. "0.05 WETH"
+}
+
+interface MarketListingsResponse {
+  status: string;
+  result: {
+    lists: {
+      asset_type: string;
+      token_id: number;
+      info: { name: string; element: string; type: string; gender: "male" | "female"; fno: number } | null;
+      dna: { amt: string; token: string; amtusd: number }[] | null;
+    }[];
+  };
+}
+
+/**
+ * Cores currently listed for sale on the DNA Racing marketplace
+ * (market.dnaracing.run). Undocumented endpoint, found in the market site's own
+ * code: POST /fbike/dnamarket/listings/new { asset_type: "core", filt: { rvmode } }.
+ */
+export async function fetchMarketListings(rvmode: "bike" | "car" | "horse" = "bike"): Promise<MarketListing[]> {
+  const r = await postJson<MarketListingsResponse>("/fbike/dnamarket/listings/new", { asset_type: "core", filt: { rvmode } });
+  return r.result.lists
+    .filter((l) => l.asset_type === "core" && l.info && l.dna && l.dna.length > 0)
+    .map((l) => {
+      const cheapest = [...l.dna!].sort((a, b) => a.amtusd - b.amtusd)[0];
+      return {
+        hid: l.token_id,
+        name: l.info!.name,
+        element: l.info!.element,
+        type: l.info!.type,
+        gender: l.info!.gender,
+        fno: l.info!.fno,
+        priceUsd: cheapest.amtusd,
+        price: `${cheapest.amt} ${cheapest.token}`,
+      };
+    });
+}
+
+export interface VaultMatch {
+  vault: string;
+  name: string;
+}
+
+/**
+ * Finds vaults by (part of) their name. Undocumented endpoint used by the
+ * market site's search box: POST /fbike/dnamarket/search { asset_type: "vault", searchtxt }.
+ * Exact and prefix matches come first.
+ */
+export async function searchVaults(query: string, limit = 10): Promise<VaultMatch[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const r = await postJson<{ status: string; result: { vault: string; vault_name: string }[] }>("/fbike/dnamarket/search", {
+    asset_type: "vault",
+    searchtxt: q,
+    limit,
+  });
+  const lower = q.toLowerCase();
+  const rank = (n: string) => {
+    const s = n.toLowerCase();
+    return s === lower ? 0 : s.startsWith(lower) ? 1 : s.includes(lower) ? 2 : 3;
+  };
+  return (r.result ?? [])
+    // Only real wallet addresses: the search also returns some accounts keyed by email, which we never show.
+    .filter((v) => /^0x[0-9a-fA-F]{40}$/.test(v.vault ?? "") && v.vault_name)
+    .map((v) => ({ vault: v.vault, name: v.vault_name }))
+    .sort((a, b) => rank(a.name) - rank(b.name) || a.name.length - b.name.length)
+    .slice(0, limit);
+}
+
+export type { ArenaCoreEntry, MiniInfo };
 export type { Band, BandStrength, DistanceCategory, DistanceStat };
