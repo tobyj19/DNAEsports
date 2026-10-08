@@ -58,6 +58,8 @@ interface RawInfo {
   vault: string;
   vault_name?: string;
   is_maiden?: boolean;
+  burned?: boolean;
+  burn?: { date?: string } | null;
   mint?: { date?: string; tx_hash?: string };
   ageing?: Partial<Record<RaceMode, number>>;
   acc_races_n?: Partial<Record<RaceMode, number>>;
@@ -96,6 +98,10 @@ export interface CoreRef {
   element: string | null;
   type: string;
   gender: string;
+  /** Sent to the burn address (0x…dead) — the game flags these `burned`. */
+  burned: boolean;
+  /** Held in the "DNA BurnPool" vault (not burned, and still flagged as a normal core by the game). */
+  inBurnPool: boolean;
   /** Official power stats per mode, for the Family tab's mini power profiles. */
   power: Partial<Record<RaceMode, RefPower>>;
 }
@@ -131,6 +137,8 @@ export interface CoreInfo {
   vault: string;
   vaultName: string;
   isMaiden: boolean;
+  /** When the core was burned, if it has been. */
+  burnedAt: string | null;
   mintedAt: string | null;
   stamina: { current: number; max: number; nextRefill: string | null };
   spStamina: { current: number; max: number };
@@ -188,16 +196,23 @@ interface PowerBulkRow {
 // rated cores have no `val` key at all, so only an explicit null means unrated.
 const bulkPct = (s: BulkStat | undefined) => (s && s.val !== null ? s.fill.per : null);
 
+// Burned cores sit in the standard burn address; the game flags them `burned` (/i/info).
+// "DNA BurnPool" is an ordinary vault that holds ~500 cores the game does not flag as burned.
+const BURN_ADDRESS = "0x000000000000000000000000000000000000dead";
+const BURN_POOL_VAULT = "0x960912569d08ccdc1ce394f444ca8010e255537a";
+
+type RefRow = Omit<CoreRef, "power" | "burned" | "inBurnPool"> & { vault?: string | null };
+
 async function fetchRefs(hids: number[]): Promise<Map<number, CoreRef>> {
   if (hids.length === 0) return new Map();
   const [rows, powers] = await Promise.all([
-    post<(Omit<CoreRef, "power"> | null)[]>("/cores/mini_bulk", { hids }),
+    post<(RefRow | null)[]>("/cores/mini_bulk", { hids }),
     post<PowerBulkRow[]>("/cores/power_bulk", { hids }),
   ]);
   const powerByHid = new Map((powers ?? []).map((p) => [p.hid, p.power]));
   return new Map(
     (rows ?? [])
-      .filter((r): r is Omit<CoreRef, "power"> => r != null)
+      .filter((r): r is RefRow => r != null)
       .map((r) => {
         const raw = powerByHid.get(r.hid) ?? {};
         const power: CoreRef["power"] = {};
@@ -205,7 +220,20 @@ async function fetchRefs(hids: number[]): Promise<Map<number, CoreRef>> {
           const m = raw[mode];
           if (m) power[mode] = { power: bulkPct(m.power), variance: bulkPct(m.variance), adjOdds: bulkPct(m.adjodds), races: m.races_n };
         }
-        return [r.hid, { hid: r.hid, name: r.name, element: r.element, type: r.type, gender: r.gender, power }];
+        const vault = (r.vault ?? "").toLowerCase();
+        return [
+          r.hid,
+          {
+            hid: r.hid,
+            name: r.name,
+            element: r.element,
+            type: r.type,
+            gender: r.gender,
+            burned: vault === BURN_ADDRESS,
+            inBurnPool: vault === BURN_POOL_VAULT,
+            power,
+          },
+        ];
       })
   );
 }
@@ -259,6 +287,7 @@ export async function getCoreInfo(hid: number): Promise<CoreInfo | null> {
     vault: info.vault,
     vaultName: info.vault_name ?? "",
     isMaiden: info.is_maiden ?? false,
+    burnedAt: info.burned ? info.burn?.date ?? "" : null,
     mintedAt: info.mint?.date ?? null,
     stamina: {
       current: info.stamina?.stamina ?? 0,

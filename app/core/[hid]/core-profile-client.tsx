@@ -155,6 +155,13 @@ function Hero({ info, accent }: { info: CoreInfo; accent: string }) {
                 Maiden
               </span>
             )}
+            {info.burnedAt != null && (
+              <span className="ml-1 mt-2 inline-block rounded-full border border-bad/50 bg-bad/10 px-2 py-0.5 text-[11px] font-medium text-bad">
+                Burnt
+                {info.burnedAt &&
+                  ` · ${new Date(info.burnedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}`}
+              </span>
+            )}
           </div>
           <span className="rounded-lg border px-2 py-1 text-sm font-bold" style={{ color: accent, borderColor: `${accent}55` }}>
             F{info.fno}
@@ -364,11 +371,14 @@ const OFFSPRING_SORTS: { id: OffspringSort; label: string }[] = [
 
 function Family({ info, mode, breeder, tiers }: { info: CoreInfo; mode: RaceMode; breeder: BreederScores; tiers: BreederGrades }) {
   const [sort, setSort] = useState<OffspringSort>("default");
+  const [hideBurnt, setHideBurnt] = useState(false);
+  const burntCount = info.offspring.filter((c) => c.burned).length;
+  const visible = hideBurnt ? info.offspring.filter((c) => !c.burned) : info.offspring;
   const offspring =
     sort === "default"
-      ? info.offspring
+      ? visible
       : // Cores without enough races for an official number sink to the bottom.
-        [...info.offspring].sort((a, b) => (b.power[mode]?.[sort] ?? -1) - (a.power[mode]?.[sort] ?? -1));
+        [...visible].sort((a, b) => (b.power[mode]?.[sort] ?? -1) - (a.power[mode]?.[sort] ?? -1));
   const rated = info.offspring.map((c) => c.power[mode]?.power).filter((v): v is number => v != null);
   const avgPower = rated.length ? rated.reduce((s, v) => s + v, 0) / rated.length : null;
 
@@ -409,6 +419,14 @@ function Family({ info, mode, breeder, tiers }: { info: CoreInfo; mode: RaceMode
           <>
             <p className="mb-3 text-xs text-muted">
               {info.offspring.length} offspring
+              {burntCount > 0 && (
+                <>
+                  {" "}· <span className="text-bad">{burntCount} burnt</span>{" "}
+                  <button onClick={() => setHideBurnt((v) => !v)} className="underline decoration-dotted hover:text-white">
+                    {hideBurnt ? "show" : "hide"}
+                  </button>
+                </>
+              )}
               {avgPower != null && (
                 <>
                   {" "}· average PWR{" "}
@@ -474,12 +492,22 @@ function CoreLink({ core, role, mode, tiers }: { core: CoreRef | null; role?: st
   return (
     <Link
       href={`/core/${core.hid}?mode=${mode}`}
-      className="group rounded-xl border border-white/[0.07] bg-black/20 p-3 transition-colors hover:border-white/20 hover:bg-white/[0.04]"
+      className={`group rounded-xl border bg-black/20 p-3 transition-colors hover:border-white/20 hover:bg-white/[0.04] ${
+        core.burned ? "border-bad/30 opacity-60" : "border-white/[0.07]"
+      }`}
     >
       {role && <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{role}</div>}
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate font-semibold group-hover:text-white">{core.name}</span>
+          {core.burned && (
+            <span className="shrink-0 rounded-md border border-bad/50 bg-bad/10 px-1.5 text-[10px] font-semibold leading-4 text-bad">Burnt</span>
+          )}
+          {core.inBurnPool && (
+            <span className="shrink-0 rounded-md border border-amber/40 px-1.5 text-[10px] leading-4 text-amber" title='Held in the "DNA BurnPool" vault — not burned'>
+              BurnPool
+            </span>
+          )}
           <GradeBadges entry={tiers?.[core.hid]?.[mode]} />
         </span>
         <span className="text-xs" style={{ color: accent }}>#{core.hid}</span>
