@@ -58,6 +58,7 @@ export default function FinderClient() {
   const [sort, setSort] = useState<(typeof SORTS)[number]["id"]>("grade");
   const [element, setElement] = useState("");
   const [type, setType] = useState("");
+  const [distance, setDistance] = useState("");
   const [maxCost, setMaxCost] = useState("");
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
@@ -98,6 +99,7 @@ export default function FinderClient() {
           sort,
           element: element || null,
           type: type || null,
+          distance: distance || null,
           maxCostUsd: maxCost.trim() ? Number(maxCost) : null,
           parentFilter: toRequest(filters),
         }),
@@ -178,6 +180,7 @@ export default function FinderClient() {
         <div className="flex flex-wrap items-end gap-3 text-xs">
           <Select label="Offspring element" value={element} onChange={setElement} options={["", "water", "earth", "fire", "metal"]} />
           <Select label="Offspring type" value={type} onChange={setType} options={["", "morphed", "freak", "xclass"]} />
+          <Select label="Offspring distance (likely)" value={distance} onChange={setDistance} options={["", "sprint", "middle", "stayer"]} />
           <label className="flex flex-col gap-1 text-muted">
             Max total cost ($)
             <input
@@ -338,7 +341,12 @@ function ParentTile({ c, role, mode }: { c: Candidate; role: "Father" | "Mother"
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-1">
         {c.grades.overall && <GradeChip grade={c.grades.overall.grade} />}
-        {c.grades.rating && <GradeChip grade={c.grades.rating.grade} prefix="R" />}
+        {c.distance && (
+          <span className="rounded-md border border-white/10 px-1.5 text-[10px] leading-4 text-soft" title={c.distance.own ? "Its distance type" : "Likely type, from its parents"}>
+            {c.distance.own ? c.distance.type : `~${c.distance.type}`}
+          </span>
+        )}
+        {c.grades.rating && <GradeChip grade={c.grades.rating.grade} prefix="O" />}
         <span className="text-[11px] text-soft">
           {c.priceLabel ?? "Yours"}
           {c.splicesLeft != null && ` · ${c.splicesLeft} splices left`}
@@ -373,6 +381,7 @@ function PairRow({ p, rank, mode }: { p: PairResult; rank: number; mode: RaceMod
           <div className="min-w-0 flex-1 text-xs">
             <div className="capitalize text-white">
               {pr.element} · {pr.type} · F{pr.fno}
+              {p.distance && <span className="normal-case text-soft"> · likely {p.distance}</span>}
             </div>
             <div className="text-muted">
               PWR <span className="font-semibold text-white">{pr.pwr.mean.toFixed(1)}</span>{" "}

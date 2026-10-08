@@ -73,7 +73,7 @@ function Part({ title, grade, line, muted }: { title: string; grade: Grade | nul
   );
 }
 
-/** Overall breeder score with its three parts (own stats, lineage, track record) for one mode. */
+/** Overall breeder score with its three parts (own stats, lineage, offspring score) for one mode. */
 export default function BreederScoreCards({ scores, mode, founder }: { scores: BreederScores; mode: RaceMode; founder: boolean }) {
   const s = scores.modes[mode];
   const overall = s?.overall ?? null;
@@ -126,7 +126,7 @@ export default function BreederScoreCards({ scores, mode, founder }: { scores: B
         />
         <Part title="Lineage" grade={lin?.grade ?? null} line={lineageLine} muted={founder ? "Founder" : "—"} />
         <Part
-          title="Track record"
+          title="Offspring score"
           grade={r?.grade ?? null}
           line={r ? `${r.ratedOffspring} rated offspring · ${r.confidence.toLowerCase()}` : "No rated offspring yet"}
           muted="—"
@@ -168,7 +168,7 @@ export default function BreederScoreCards({ scores, mode, founder }: { scores: B
               <p>
                 <span className="text-soft">Own stats</span> rates the core itself. <span className="text-soft">Lineage</span> rates its
                 bloodline: parents count most, grandparents a little (older ancestors added nothing in our tests).{" "}
-                <span className="text-soft">Track record</span> comes only from its officially rated offspring, after allowing for each mate.
+                <span className="text-soft">Offspring score</span> comes only from its officially rated offspring, after allowing for each mate.
               </p>
               <p>
                 Grades are rankings among rated cores: S+ is the top 0.5%, S top 1%, S- top 2%, then A (top 10%), B (top 30%), C (middle
@@ -239,19 +239,19 @@ function Chip({ chip, label }: { chip: GradeChip; label: string }) {
       style={{ color, background: `${color}1A`, boxShadow: `inset 0 0 0 1px ${color}55` }}
       title={`${label} ${chip.grade} · better than ${rankText(chip.score)}%`}
     >
-      {label === "Track record" && <span className="mr-0.5 font-semibold opacity-70">R</span>}
+      {label === "Offspring score" && <span className="mr-0.5 font-semibold opacity-70">O</span>}
       {chip.grade}
     </span>
   );
 }
 
-/** Overall grade, plus an "R" track-record grade when it has rated offspring. For family tiles. */
+/** Overall grade, plus an "O" offspring-score grade when it has rated offspring. For family tiles. */
 export function GradeBadges({ entry }: { entry: BreederGrades[number][RaceMode] | undefined }) {
   if (!entry) return null;
   return (
     <>
       {entry.overall && <Chip chip={entry.overall} label="Overall breeder score" />}
-      {entry.rating && <Chip chip={entry.rating} label="Track record" />}
+      {entry.rating && <Chip chip={entry.rating} label="Offspring score" />}
     </>
   );
 }

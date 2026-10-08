@@ -12,6 +12,8 @@ import Telemetry from "./telemetry";
 import Estimates from "./estimates";
 import RaceHistory from "./race-history";
 import BreederScoreCards, { GradeBadges } from "./breeder-score";
+import DistanceCard from "./distance-card";
+import type { CoreDistance } from "@/lib/distanceProfile";
 import type { BreederGrades, BreederScores } from "@/lib/breederScore";
 
 const MODES: RaceMode[] = ["bike", "car", "horse"];
@@ -33,11 +35,13 @@ export default function CoreProfileClient({
   initialMode,
   breeder,
   familyGrades,
+  distance,
 }: {
   info: CoreInfo;
   initialMode: RaceMode | null;
   breeder: BreederScores;
   familyGrades: BreederGrades;
+  distance: Partial<Record<RaceMode, CoreDistance>>;
 }) {
   // Default to the mode the core has raced most.
   const busiest = [...MODES].sort((a, b) => info.modes[b].racesRun - info.modes[a].racesRun)[0];
@@ -104,7 +108,7 @@ export default function CoreProfileClient({
 
       <div className="min-w-0 flex flex-col gap-4">
         <Hero info={info} accent={accent} />
-        {tab === "overview" && <Overview info={info} mode={mode} accent={accent} breeder={breeder} />}
+        {tab === "overview" && <Overview info={info} mode={mode} accent={accent} breeder={breeder} distance={distance} />}
         {tab === "telemetry" && <RacesGate state={races}>{(d) => <Telemetry info={info} races={d.races} mode={mode} />}</RacesGate>}
         {tab === "estimates" && <RacesGate state={races}>{(d) => <Estimates estimates={d.estimates[mode]} official={info.modes[mode]} mode={mode} />}</RacesGate>}
         {tab === "races" && (
@@ -179,7 +183,19 @@ function Hero({ info, accent }: { info: CoreInfo; accent: string }) {
   );
 }
 
-function Overview({ info, mode, accent, breeder }: { info: CoreInfo; mode: RaceMode; accent: string; breeder: BreederScores }) {
+function Overview({
+  info,
+  mode,
+  accent,
+  breeder,
+  distance,
+}: {
+  info: CoreInfo;
+  mode: RaceMode;
+  accent: string;
+  breeder: BreederScores;
+  distance: Partial<Record<RaceMode, CoreDistance>>;
+}) {
   const mounted = useMounted();
   const m = info.modes[mode];
   const s = info.splicing;
@@ -209,6 +225,8 @@ function Overview({ info, mode, accent, breeder }: { info: CoreInfo; mode: RaceM
       </Card>
 
       <BreederScoreCards scores={breeder} mode={mode} founder={info.type === "genesis"} />
+
+      <DistanceCard profile={distance[mode]} mode={mode} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Meter

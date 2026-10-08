@@ -12,6 +12,7 @@ import type { RaceMode } from "@/lib/gameCoreSearch";
 import { parentGrades, predictPair, type PairPrediction, type TraitPrediction } from "@/lib/pairPredict";
 import type { Grade } from "@/lib/breederScore";
 import PredictForm from "./predict-form";
+import { predictOffspringDistance } from "@/lib/distanceProfile";
 
 export const metadata: Metadata = { title: "Pair Predictor · DNA Analytics" };
 
@@ -118,7 +119,7 @@ function ParentCard({ core, role, color, mode }: { core: CoreInfo; role: string;
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {g.overall ? <GradeChip grade={g.overall.grade} prefix="Overall" /> : <span className="text-xs text-faint">No breeder score yet</span>}
-        {g.rating && <GradeChip grade={g.rating.grade} prefix={`Track record · ${g.rating.offspring} off.`} />}
+        {g.rating && <GradeChip grade={g.rating.grade} prefix={`Offspring score · ${g.rating.offspring} rated`} />}
       </div>
       <div className="mt-3 grid grid-cols-4 gap-2 text-xs">
         <Stat label="PWR" value={m.powerPct != null ? m.powerPct.toFixed(1) : "—"} />
@@ -144,6 +145,7 @@ function OffspringCard({ p, father, mother, mode }: { p: PairPrediction; father:
   const fm = father.modes[mode];
   const mm = mother.modes[mode];
   const pct = (v: number) => `${Math.round(v * 100)}%`;
+  const dist = predictOffspringDistance(father.hid, mother.hid, mode);
   const parentsAvgPwr = fm.powerPct != null && mm.powerPct != null ? (fm.powerPct + mm.powerPct) / 2 : null;
 
   return (
@@ -156,6 +158,7 @@ function OffspringCard({ p, father, mother, mode }: { p: PairPrediction; father:
           <Pill>{p.element}</Pill>
           <Pill>{p.type}</Pill>
           <Pill>F{p.fno}</Pill>
+          {dist && <Pill>Likely {dist.type}</Pill>}
         </div>
       </div>
 
@@ -222,6 +225,7 @@ function OffspringCard({ p, father, mother, mode }: { p: PairPrediction; father:
       )}
       <p className="mt-2 text-[11px] text-faint">
         Element, type and F# follow fixed game rules. Win % and place % depend a lot on which races a core enters, so their ranges are wide.
+        {dist && "The likely distance type comes from both parents' distance preferences (right side of sprint / middle / stayer about 6 times in 10 on bike). "}
         Jackpot odds come from how often real offspring out-PWR both parents — about 1 in 40 offspring lands 8+ PWR away from its
         prediction, two-thirds of them above.
       </p>

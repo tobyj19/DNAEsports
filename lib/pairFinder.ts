@@ -16,6 +16,7 @@ import {
   type PowerStats,
 } from "./dna-api";
 import { getBestX } from "./breederScore";
+import { distanceGroup, getDistanceProfile, predictOffspringDistance, type DistanceGroup, type DistanceType } from "./distanceProfile";
 import { parentGrades, predictFromX, type PairPrediction, type ParentMeta } from "./pairPredict";
 import type { RaceMode } from "./gameCoreSearch";
 
@@ -105,6 +106,8 @@ export interface Candidate extends ParentMeta {
   vaultName: string | null;
   /** Live official PWR / VAR / ADJ (0-100) and races in this mode. */
   stats: PowerStats | null;
+  /** Its distance type, and whether that's its own ("own") or a likely type from its parents. */
+  distance: { type: DistanceType; own: boolean } | null;
   grades: ReturnType<typeof parentGrades>;
 }
 
@@ -112,6 +115,8 @@ export interface PairResult {
   father: Candidate;
   mother: Candidate;
   prediction: PairPrediction;
+  /** Likely distance type of the offspring, from both parents' leans. */
+  distance: DistanceType | null;
   costUsd: number;
 }
 
@@ -126,6 +131,8 @@ export interface FinderRequest {
   element?: string | null;
   type?: string | null;
   parentFilter?: ParentFilter;
+  /** Only pairs whose offspring likely lean this way. */
+  distance?: DistanceGroup | null;
   limit?: number;
 }
 
@@ -176,6 +183,7 @@ export async function findPairs(req: FinderRequest): Promise<FinderResponse> {
         splicesLeft: splices.get(m.hid) ?? null,
         vaultName: m.vault_name || null,
         stats: null,
+        distance: null,
         grades: parentGrades(m.hid, req.mode),
       });
     }
@@ -194,6 +202,7 @@ export async function findPairs(req: FinderRequest): Promise<FinderResponse> {
       splicesLeft: null,
       vaultName: null,
       stats: null,
+      distance: null,
       grades: parentGrades(a.hid, req.mode),
     });
   }
@@ -211,12 +220,17 @@ export async function findPairs(req: FinderRequest): Promise<FinderResponse> {
       splicesLeft: null,
       vaultName: null,
       stats: null,
+      distance: null,
       grades: parentGrades(l.hid, req.mode),
     });
   }
 
   const stats = await powerStats([...new Set([...pool.values()].map((c) => c.hid))], req.mode);
-  for (const c of pool.values()) c.stats = stats.get(c.hid) ?? null;
+  for (const c of pool.values()) {
+    c.stats = stats.get(c.hid) ?? null;
+    const d = getDistanceProfile(c.hid, req.mode);
+    c.distance = d?.type ? { type: d.type, own: d.source === "own" } : null;
+  }
 
   const usable = (c: Candidate) => c.splicesLeft !== 0 && passes(c, req.parentFilter);
   const fathers = [...pool.values()].filter((c) => c.gender === "male" && req.fatherSources.includes(c.source) && usable(c));
@@ -242,7 +256,9 @@ export async function findPairs(req: FinderRequest): Promise<FinderResponse> {
       const p = predictFromX(req.mode, f, m, x(f.hid), x(m.hid), [f.stats?.pwr, m.stats?.pwr]);
       if (req.element && p.element !== req.element) continue;
       if (req.type && p.type !== req.type) continue;
-      pairs.push({ father: f, mother: m, prediction: p, costUsd: cost });
+      const dist = predictOffspringDistance(f.hid, m.hid, req.mode)?.type ?? null;
+      if (req.distance && (!dist || distanceGroup(dist) !== req.distance)) continue;
+      pairs.push({ father: f, mother: m, prediction: p, distance: dist, costUsd: cost });
     }
   }
 

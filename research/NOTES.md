@@ -80,6 +80,18 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
   lines, so "preferred" often lands on 900/1000 or 2200/2300 — trust the lean/type more
   than the exact metre figure unless the profile actually curves.
 
+### Distance profile on the site (Oct 8 — `distance-export.py --dir research-data --site lib/data/distance-profiles.json`)
+
+- Per core and mode: own type when its profile is medium/high confidence; otherwise
+  "Developing" at its most-raced distance, with a likely type from the parents
+  (offspring lean = a + b × parents' avg lean; bike a 0.005, b 0.74). Genesis / no parent
+  profiles: most-raced distance only. Bike: 8,046 own · 9,149 from parents · 1,546 raced only.
+- `--validate` (half the offspring hidden): parents' lean gets the exact type 37% bike / 27% car
+  / 30% horse (commonest-type baseline 23/21/21%) and the right side (sprint / middle / stayer)
+  62% / 50% / 51% — so the site words it "Likely …".
+- Core Overview card, "Likely <type>" in the Pair Predictor, parent badges + "Offspring distance"
+  filter in the Pair Finder. Named "Distance profile" (not "track record").
+
 ### Overall / Own stats / Lineage / Track record (Oct 8, replaces the potential vs track record card)
 
 - **Overall** = best estimate (own stats + bloodline + offspring, offspring weight grows with
@@ -87,7 +99,7 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
   (4+ rated), own stats, bloodline and early results, or bloodline.
 - **Own stats** = h2 × own z only. **Lineage** = 0.75 × parents' best + 0.25 × grandparents'
   best (genesis = Founder). Tested: grandparents add a little (R² 0.569 → 0.580, weight ~1/3 of
-  parents); great-grandparents nothing. **Track record** unchanged.
+  parents); great-grandparents nothing. **Offspring score** (was "Track record"; renamed because players read it as racing results) unchanged.
 - No grandparent "rolls": residual after parents doesn't follow grandparents (r −0.01 avg,
   −0.03 best, +0.06 worst); element/type are 100% from parents; only colour rolls (game text:
   33% each parent, 33% random). Random surprises exist: ~2.6% of offspring land 8+ PWR off the

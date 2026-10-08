@@ -6,7 +6,8 @@
 //                 passes on, from its own stats, its bloodline and its offspring
 //   Own stats     the core itself (official ratings, or early race results)
 //   Lineage       its bloodline: parents (75%) and grandparents (25%); none for genesis
-//   Track record  what its rated offspring show
+//   Offspring score  what its rated offspring show (was "track record" — renamed so
+//                 it isn't mistaken for racing results)
 // All are 0-100 percentiles among rated cores, graded S+ ... D-. Only import this
 // from server code (page.tsx): the data file is several MB, so pages read it here
 // and pass small per-core entries down. Client components use `import type` only.
