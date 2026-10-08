@@ -18,12 +18,13 @@ const ESPORTS_LINKS = [
 export default function HomePage() {
   return (
     <div className="py-6">
-      <div className="relative mb-10 text-center">
-        <div className="pointer-events-none absolute left-1/2 top-0 h-40 w-[28rem] -translate-x-1/2 rounded-full bg-mint/20 blur-3xl" />
-        <h1 className="relative text-4xl sm:text-5xl font-extrabold tracking-tight">
-          DNA <span className="bg-gradient-to-r from-mint to-sky-400 bg-clip-text text-transparent">Analytics</span>
+      <div className="relative mb-10 flex flex-col items-center text-center">
+        <div className="pointer-events-none absolute left-1/2 top-4 h-40 w-[30rem] max-w-full -translate-x-1/2 rounded-full bg-[#22E5FF]/10 blur-3xl" />
+        <h1 className="relative">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/logo-primary.svg" alt="DNA Analytics" className="h-auto w-[22rem] max-w-full sm:w-[28rem]" />
         </h1>
-        <p className="relative mt-3 text-[#9CA6B0]">Data tools for DNA Racing — pick where you want to go.</p>
+        <p className="relative mt-4 text-[#9CA6B0]">Data tools for DNA Racing — pick where you want to go.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -31,7 +32,7 @@ export default function HomePage() {
           title="Main Game"
           tagline="Every core in DNA Racing"
           href="/core-search"
-          accent="#4ADE80"
+          accent="#22E5FF"
           links={GAME_LINKS}
         >
           <QuickSearch />
@@ -40,7 +41,7 @@ export default function HomePage() {
           title="Esports"
           tagline="DNA Racing Pro League"
           href="/esports"
-          accent="#38BDF8"
+          accent="#FF2BD6"
           links={ESPORTS_LINKS}
         />
       </div>

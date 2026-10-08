@@ -21,7 +21,7 @@ export default function QuickSearch() {
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Find a core — name or ID, then Enter"
-        className="w-full rounded-xl border border-white/[0.1] bg-black/30 px-3 py-2.5 text-sm placeholder:text-[#6B7480] focus:border-mint/60 focus:outline-none"
+        className="w-full rounded-xl border border-white/[0.1] bg-black/30 px-3 py-2.5 text-sm placeholder:text-[#6B7480] focus:border-[#22E5FF]/60 focus:outline-none"
       />
     </form>
   );
