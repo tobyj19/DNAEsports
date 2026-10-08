@@ -1,17 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import { ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, XAxis, YAxis, Cell } from "recharts";
 import type { SlimRace } from "@/lib/coreRaces";
 import type { CoreInfo } from "@/lib/coreInfo";
-import { getPopulationAvgTime } from "@/lib/coreProfile";
+import { getPopulationAvgTime, getPopulationMedianTime } from "@/lib/coreProfile";
 import { Card } from "./ui";
 
 const DISTANCES = [1000, 1200, 1400, 1600, 1800, 2000, 2200];
-const WINDOW_SEC = 4; // every chart shows field average ± 4s, so rows compare directly
+const WINDOW_SEC = 4; // every chart shows the field line ± 4s, so rows compare directly
 const SMALL_SAMPLE = 25;
 const FASTER = "#4ADE80";
 const SLOWER = "#F87171";
 const FIELD = "#FB923C";
+
+type FieldRef = "avg" | "median";
+const fieldTime = (d: number, ref: FieldRef) => (ref === "median" ? getPopulationMedianTime(d) : getPopulationAvgTime(d));
+const HAS_MEDIANS = DISTANCES.every((d) => getPopulationMedianTime(d) != null);
 
 interface DistTelemetry {
   distance: number;
@@ -19,15 +24,15 @@ interface DistTelemetry {
   times: number[];
   avg: number | null;
   sd: number | null;
-  gap: number | null; // core avg − field avg; negative = faster
+  gap: number | null; // core avg − field line (avg or median); negative = faster
   faster: number;
   slower: number;
 }
 
-function summarise(races: SlimRace[], distance: number): DistTelemetry {
+function summarise(races: SlimRace[], distance: number, ref: FieldRef): DistTelemetry {
   const rs = races.filter((r) => r.mode === "bike" && r.distance === distance);
   const times = rs.map((r) => r.time);
-  const field = getPopulationAvgTime(distance);
+  const field = fieldTime(distance, ref);
   const n = times.length;
   const avg = n ? times.reduce((a, b) => a + b, 0) / n : null;
   // Sample standard deviation (n-1), matching the original spreadsheet's STDEV.
@@ -57,7 +62,9 @@ function GapText({ gap, className = "" }: { gap: number | null; className?: stri
 }
 
 export default function Telemetry({ info, races }: { info: CoreInfo; races: SlimRace[]; accent: string }) {
-  const rows = DISTANCES.map((d) => summarise(races, d));
+  const [ref, setRef] = useState<FieldRef>("avg");
+  const rows = DISTANCES.map((d) => summarise(races, d, ref));
+  const refLabel = ref === "median" ? "median" : "average";
   const total = rows.reduce((n, r) => n + r.times.length, 0);
   const totalFaster = rows.reduce((n, r) => n + r.faster, 0);
   // Races-weighted average gap across every distance raced.
@@ -67,7 +74,24 @@ export default function Telemetry({ info, races }: { info: CoreInfo; races: Slim
 
   return (
     <div className="flex flex-col gap-4">
-      <Card title={`Telemetry · ${info.name} · bike, esports distances`}>
+      <Card
+        title={`Telemetry · ${info.name} · bike, esports distances`}
+        right={
+          HAS_MEDIANS && (
+            <div className="flex rounded-lg border border-white/[0.07] bg-black/20 p-0.5 text-xs">
+              {(["avg", "median"] as FieldRef[]).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRef(r)}
+                  className={`rounded-md px-2.5 py-1 transition-colors ${ref === r ? "bg-white/10 text-white" : "text-[#9CA6B0] hover:text-white"}`}
+                >
+                  Field {r === "avg" ? "average" : "median"}
+                </button>
+              ))}
+            </div>
+          )
+        }
+      >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <SummaryTile label="Races" value={total.toLocaleString("en-US")} />
           <SummaryTile
@@ -78,8 +102,8 @@ export default function Telemetry({ info, races }: { info: CoreInfo; races: Slim
           <SummaryTile label="Avg vs field" value={<GapText gap={weightedGap} />} small />
         </div>
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-[#9CA6B0]">
-          <span className="flex items-center gap-1.5"><span className="h-3 w-0.5" style={{ background: FIELD }} /> Field average (game-wide)</span>
-          <span className="flex items-center gap-1.5"><span className="text-white">▼</span> This core&apos;s average</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-0.5" style={{ background: FIELD }} /> Field {refLabel} (game-wide)</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 bg-white" /> This core&apos;s average</span>
           <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: FASTER }} /> Faster than field</span>
           <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: SLOWER }} /> Slower than field</span>
         </div>
@@ -181,26 +205,20 @@ function StripChart({ t }: { t: DistTelemetry }) {
               dataKey="x"
               domain={[-WINDOW_SEC, WINDOW_SEC]}
               ticks={[-4, -2, 0, 2, 4]}
-              tickFormatter={(v) => (v === 0 ? "field" : `${v > 0 ? "+" : "−"}${Math.abs(v)}s`)}
+              tickFormatter={(v) => (field + v).toFixed(1)}
               tick={{ fill: "#6B7480", fontSize: 10 }}
               axisLine={{ stroke: "rgba(255,255,255,0.08)" }}
               tickLine={false}
             />
             <YAxis type="number" dataKey="y" domain={[0, 1]} hide />
-            <ReferenceLine x={0} stroke={FIELD} strokeWidth={2} />
-            {coreGap != null && (
-              <ReferenceLine
-                x={coreGap}
-                stroke="rgba(255,255,255,0.5)"
-                strokeDasharray="2 3"
-                label={{ value: "▼", position: "top", fill: "#fff", fontSize: 10 }}
-              />
-            )}
             <Scatter data={points} isAnimationActive={false} shape="circle">
               {points.map((p, i) => (
                 <Cell key={i} fill={p.faster ? FASTER : SLOWER} fillOpacity={dotOpacity} />
               ))}
             </Scatter>
+            {/* Lines after the dots so they stay visible on busy distances. */}
+            <ReferenceLine x={0} stroke={FIELD} strokeWidth={2} />
+            {coreGap != null && <ReferenceLine x={coreGap} stroke="#fff" strokeWidth={2} />}
           </ScatterChart>
         </ResponsiveContainer>
       </div>

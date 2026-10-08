@@ -9,6 +9,13 @@ export function getPopulationAvgTime(distance: number): number | null {
   return entry ? entry.avgTime : null;
 }
 
+/** Whole-game median finish time per distance (bike), from the Oct 2026 crawl.
+ * Less pulled around than the average by freak slow races. */
+export function getPopulationMedianTime(distance: number): number | null {
+  const entry = (populationAvgTimes as Record<string, { medianTime?: number }>)[String(distance)];
+  return entry?.medianTime ?? null;
+}
+
 export interface RaceScatterPoint {
   time: number;
   blueStar: boolean;
