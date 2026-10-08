@@ -12,9 +12,10 @@ import type { RaceMode } from "@/lib/gameCoreSearch";
 import type { Candidate, FinderResponse, PairResult, Source } from "@/lib/pairFinder";
 import type { Grade } from "@/lib/breederScore";
 import VaultPicker, { type PickedVault } from "./vault-picker";
+import ParentFilters, { EMPTY_FILTERS, activeCount, toRequest, type ParentFilterState } from "./parent-filters";
 
 const MODES: RaceMode[] = ["bike", "car", "horse"];
-const SOURCE_LABEL: Record<Source, string> = { vault: "Vault 1", vault2: "Vault 2", stud: "Stud barn", market: "Marketplace" };
+const SOURCE_LABEL: Record<Source, string> = { vault: "Vault 1", vault2: "Vault 2", stud: "Stud barn", market: "Marketplace (buy)" };
 const SOURCE_COLOR: Record<Source, string> = { vault: "#4ADE80", vault2: "#22D3EE", stud: "#A78BFA", market: "#FBBF24" };
 const ALL_SOURCES: Source[] = ["vault", "vault2", "stud", "market"];
 const GRADE_COLOR: Record<string, string> = { S: "#FACC15", A: "#4ADE80", B: "#38BDF8", C: "#8B9BB0", D: "#F87171" };
@@ -49,13 +50,17 @@ export default function FinderClient() {
   const [vault1, setVault1] = useState<PickedVault | null>(null);
   const [vault2, setVault2] = useState<PickedVault | null>(null);
   const [mode, setMode] = useState<RaceMode>("bike");
-  const [fatherSources, setFatherSources] = useState<Source[]>(ALL_SOURCES);
-  const [motherSources, setMotherSources] = useState<Source[]>(ALL_SOURCES);
+  // Breeding goes through the stud barn; buying from the marketplace is opt-in.
+  const [fatherSources, setFatherSources] = useState<Source[]>(["vault", "vault2", "stud"]);
+  const [motherSources, setMotherSources] = useState<Source[]>(["vault", "vault2", "stud"]);
+  const [filters, setFilters] = useState<ParentFilterState>(EMPTY_FILTERS);
+  const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState<(typeof SORTS)[number]["id"]>("grade");
   const [element, setElement] = useState("");
   const [type, setType] = useState("");
   const [maxCost, setMaxCost] = useState("");
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<FinderResponse | null>(null);
 
@@ -80,6 +85,7 @@ export default function FinderClient() {
     setLoading(true);
     setError(null);
     try {
+      setProgress("Loading cores and ranking pairs…");
       const res = await fetch("/api/pair-finder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -93,6 +99,7 @@ export default function FinderClient() {
           element: element || null,
           type: type || null,
           maxCostUsd: maxCost.trim() ? Number(maxCost) : null,
+          parentFilter: toRequest(filters),
         }),
       });
       const json = await res.json();
@@ -103,6 +110,7 @@ export default function FinderClient() {
       setData(null);
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   };
 
@@ -150,6 +158,23 @@ export default function FinderClient() {
           <SourcePicker label="♀ Mothers from" value={motherSources} onToggle={(s) => toggle(motherSources, setMotherSources, s)} available={available} labels={labels} />
         </div>
 
+        <div className="rounded-xl border border-white/[0.06] bg-black/10">
+          <button
+            onClick={() => setShowFilters((v) => !v)}
+            className="flex w-full items-center justify-between px-3 py-2 text-xs text-muted hover:text-white"
+          >
+            <span>
+              Each parent must have{activeCount(filters) > 0 && <span className="ml-1 text-violet-300">· {activeCount(filters)} active</span>}
+            </span>
+            <span>{showFilters ? "▲" : "▼"}</span>
+          </button>
+          {showFilters && (
+            <div className="border-t border-white/[0.06] p-3">
+              <ParentFilters value={filters} onChange={setFilters} />
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-end gap-3 text-xs">
           <Select label="Offspring element" value={element} onChange={setElement} options={["", "water", "earth", "fire", "metal"]} />
           <Select label="Offspring type" value={type} onChange={setType} options={["", "morphed", "freak", "xclass"]} />
@@ -184,6 +209,7 @@ export default function FinderClient() {
             {loading ? "Finding pairs…" : "Find pairs"}
           </button>
         </div>
+        {progress && <div className="text-right text-xs text-muted">{progress}</div>}
       </div>
 
       {error && <div className="rounded-xl border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-bad">{error}</div>}
@@ -191,6 +217,8 @@ export default function FinderClient() {
       {data && (
         <>
           <div className="text-xs text-muted">
+            {data.counts.studs > 0 &&
+              `${data.counts.studs.toLocaleString()} cores in the stud barn${data.studBarnAt ? ` (as of ${minutesAgo(data.studBarnAt)})` : ""} · `}
             Checked {data.counts.pairsChecked.toLocaleString()} pairs ({data.counts.fathers} fathers × {data.counts.mothers} mothers) · showing the top{" "}
             {data.pairs.length} (each core at most 3 times, for variety)
             {data.notes.map((n) => (
@@ -216,6 +244,11 @@ export default function FinderClient() {
       )}
     </div>
   );
+}
+
+function minutesAgo(iso: string): string {
+  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  return m < 1 ? "just now" : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`;
 }
 
 function SourcePicker({

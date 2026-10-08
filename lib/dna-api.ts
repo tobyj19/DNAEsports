@@ -108,10 +108,19 @@ interface PowerFill {
   fill: { normalized: number; per: number };
 }
 
+interface ModePower {
+  races_n: number;
+  adjodds: PowerFill;
+  power: PowerFill;
+  variance: PowerFill;
+}
+
 interface PowerResult {
   hid: number;
   power: {
-    bike?: { races_n: number; adjodds: PowerFill; power: PowerFill; variance: PowerFill };
+    bike?: ModePower;
+    car?: ModePower;
+    horse?: ModePower;
   };
 }
 
@@ -405,6 +414,28 @@ export async function fetchArenaCoreIds(rvmode: ArenaFilter["rvmode"] = "bike"):
   const filter: ArenaFilter = { rvmode, use_powerstats: true, adjodds: { mi: 0, mx: 100 } };
   const data = await postJson<ArenaResponse>("/fbike/splicing3/arena_v2", { f: filter, search: null });
   return data.result.cores;
+}
+
+export interface PowerStats {
+  pwr: number | null; // official PWR, 0-100
+  vari: number | null;
+  adj: number | null;
+  races: number;
+}
+
+/** Official PWR / VAR / ADJ (0-100) and race count per core for one mode. */
+export async function fetchPowerStats(hids: number[], mode: "bike" | "car" | "horse"): Promise<Map<number, PowerStats>> {
+  const out = new Map<number, PowerStats>();
+  for (let i = 0; i < hids.length; i += 500) {
+    const r = await postJson<PowerBulkResponse>("/fbike/cores/power_bulk", { hids: hids.slice(i, i + 500) });
+    for (const p of r.result ?? []) {
+      const m = p?.power?.[mode];
+      if (!m) continue;
+      const v = (f: PowerFill | undefined) => (f && f.fill && f.fill.per > 0 ? f.fill.per : null);
+      out.set(p.hid, { pwr: v(m.power), vari: v(m.variance), adj: v(m.adjodds), races: m.races_n ?? 0 });
+    }
+  }
+  return out;
 }
 
 /**

@@ -1,0 +1,41 @@
+name: Stud barn snapshot
+
+# Every 30 minutes, saves the whole stud barn (Splice Arena) to stud-barn.json
+# on the `data` branch. The Pair Finder reads it from there, because loading
+# the arena live takes minutes. Only the `data` branch changes; main and the
+# live site are untouched (vercel.json skips deploying `data`).
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stud-barn-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the stud barn
+        run: python scripts/stud-barn-snapshot.py "$RUNNER_TEMP/stud-barn.json"
+
+      - name: Publish to the data branch
+        run: |
+          set -e
+          cd "$RUNNER_TEMP"
+          rm -rf data && mkdir data && cd data
+          git init -q -b data
+          cp "$RUNNER_TEMP/stud-barn.json" .
+          git add stud-barn.json
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Stud barn snapshot $(date -u +%Y-%m-%dT%H:%MZ)"
+          # The branch only ever holds the latest snapshot (one commit, force-pushed) so it never grows.
+          git push -q --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" data

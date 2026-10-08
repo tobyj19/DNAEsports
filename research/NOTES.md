@@ -91,6 +91,15 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
   80% ranges widened ×1.22 (RESID_INFLATE) so they hold ~78–79% of real offspring.
 - Marketplace listings: POST /fbike/dnamarket/listings/new {asset_type:"core", filt:{rvmode}}
   (undocumented; found in market.dnaracing.run code). Stud barn: /fbike/splicing3/arena_v2.
+- **Stud barn is ~1,400 cores, not 100**: arena_v2 pages via top-level `page` (has_more lies),
+  same listings for every mode. Cold pages take 10–40 s each, so the "Stud barn snapshot"
+  workflow (every 30 min, scripts/stud-barn-snapshot.py) force-pushes stud-barn.json to the
+  `data` branch; the finder reads it from raw.githubusercontent (vercel.json skips deploying `data`).
+  Marketplace = buying a core (labelled "Marketplace (buy)", off by default).
+- Finder "Each parent must have" filters (price per core, F#, races, PWR, VAR, ADJ, element,
+  type) use live power_bulk stats.
+- Vault search by name: POST /fbike/dnamarket/search {asset_type:"vault", searchtxt}; we drop
+  any result that isn't a 0x wallet (some come back keyed by email).
 - Site: /breeding/predict (Pair Predictor), /breeding/finder (Pair Finder, /api/pair-finder):
   vault × stud barn × marketplace, never stud × stud, each core max 3× in results.
 
