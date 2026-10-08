@@ -1,7 +1,7 @@
 # Quick bulk pulls (a few minutes): every core's lineage + type, official
 # PWR/VAR/ADJ per mode, and career win / place counts per mode.
 # Writes <OutDir>/lineage.txt, official-power.txt, results.txt (pipe-separated).
-param([string]$OutDir)
+param([string]$OutDir, [int]$MinCores = 15000)
 
 $ErrorActionPreference = "Stop"
 $api = "https://api.dnaracing.run/fbike"
@@ -67,3 +67,5 @@ $lineage | Set-Content -Encoding utf8 (Join-Path $OutDir "lineage.txt")
 $power | Set-Content -Encoding utf8 (Join-Path $OutDir "official-power.txt")
 $results | Set-Content -Encoding utf8 (Join-Path $OutDir "results.txt")
 "lineage $($lineage.Count - 1) | official ratings $($power.Count - 1) | career results $($results.Count - 1)"
+# Guard for automated refreshes: a short pull (API hiccup) must not replace good data.
+if ($lineage.Count - 1 -lt $MinCores) { Write-Error "Only $($lineage.Count - 1) cores read (expected $MinCores+) - not publishing"; exit 1 }

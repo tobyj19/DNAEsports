@@ -97,7 +97,7 @@ export default function BreederScoreCards({ scores, mode, founder }: { scores: B
       : "Parents not scored yet";
 
   return (
-    <Card title={`Breeding · ${mode}`} right={<span className="text-[11px] text-muted">data from {scores.generated}</span>}>
+    <Card title={`Breeding · ${mode}`} right={<span className="text-[11px] text-muted">updated {scores.generated}</span>}>
       {overall ? (
         <div className="flex items-center gap-4">
           <GradeTile grade={overall.grade} size="lg" />

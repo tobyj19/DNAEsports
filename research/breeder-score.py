@@ -34,6 +34,7 @@ Grades by percentile; cut-offs set by officially rated cores (Breeding Score) an
 cores with 3+ rated offspring (Breeder Rating); everyone else is placed on that scale.
 """
 import argparse, bisect, json, math, os, sys
+from datetime import date
 from collections import defaultdict
 
 MODES = ["bike", "car", "horse"]
@@ -51,7 +52,8 @@ OWN_SOURCES = ["Official ratings", "Early results"]
 OVERALL_BASIS = ["offspring", "own stats", "bloodline and early results", "bloodline"]
 GP_WEIGHT = 0.25  # grandparents' share of the lineage score (parents 0.75): measured weight ~1/3 of parents
 RATING_CONF = ["Proven", "Some evidence", "Early read"]
-GENERATED = "2026-10-08"  # date of the research crawl these scores come from
+# Date the data was refreshed; the automated jobs set DATA_DATE, otherwise today.
+GENERATED = os.environ.get("DATA_DATE") or date.today().isoformat()
 RESULTS_K = 30            # pseudo-races of mode-average results mixed into each core
 RESID_INFLATE = 1.22      # in-sample spread is optimistic (parents' estimates already include those offspring);
                           # 1.22 makes the 80% range hold 80% of held-out offspring (see --validate)

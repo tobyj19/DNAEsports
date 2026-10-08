@@ -1,0 +1,60 @@
+name: Site data - weekly full refresh
+
+# Every week: the bulk pulls plus one pass over every core's race history
+# (research/history-crawl.ps1), then rebuilds the star / "beats sims" analysis,
+# the distance profiles and the Breeding Scores, checks them, and pushes
+# lib/data/distance-profiles.json, lib/data/breeder-scores.json and
+# research/cache/star.json (read by the daily refresh) to main. ~2 hours.
+# The raw crawl is kept as the "research-data" download for 14 days.
+
+on:
+  schedule:
+    - cron: "0 15 * * 0" # Sundays 15:00 UTC = Monday 1am AEST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: site-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Date stamp
+        run: echo "DATA_DATE=$(date -u +%F)" >> "$GITHUB_ENV"
+
+      - name: Bulk pulls (lineage, official ratings, career results)
+        shell: pwsh
+        run: ./research/fetch-bulk.ps1 -OutDir "$env:RUNNER_TEMP/rd"
+
+      - name: Race histories (times, stars, results) for every core
+        shell: pwsh
+        run: ./research/history-crawl.ps1 -OutDir "$env:RUNNER_TEMP/rd" -Threads 10
+
+      - name: Star analysis, distance profiles, Breeding Scores
+        run: |
+          rd="$RUNNER_TEMP/rd"; mkdir -p "$RUNNER_TEMP/new"
+          python research/star-analysis.py --dir "$rd" --out "$rd/star.json"
+          python research/distance-export.py --dir "$rd" --site "$RUNNER_TEMP/new/distance-profiles.json"
+          python research/breeder-score.py --dir "$rd" --star "$rd/star.json" --site "$RUNNER_TEMP/new/breeder-scores.json"
+
+      - name: Check and publish
+        run: |
+          bash research/publish-site-data.sh "Site data: weekly full refresh $DATA_DATE" \
+            "$RUNNER_TEMP/new/distance-profiles.json:lib/data/distance-profiles.json" \
+            "$RUNNER_TEMP/new/breeder-scores.json:lib/data/breeder-scores.json" \
+            "$RUNNER_TEMP/rd/star.json:research/cache/star.json"
+
+      - name: Keep the raw crawl
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-data
+          path: ${{ runner.temp }}/rd
+          retention-days: 14

@@ -1,0 +1,52 @@
+name: Site data - daily refresh
+
+# Every day: re-pulls official PWR/VAR/ADJ, lineage (new offspring) and career
+# win/place results for every core, recalculates every Breeding Score and Breeder
+# Rating, checks the result looks sane, and pushes lib/data/breeder-scores.json to
+# main (Vercel redeploys). ~10 minutes, ~400 bulk API calls. The race-history parts
+# (distance profiles, star "beats sims") come from the weekly full refresh via
+# research/cache/star.json.
+
+on:
+  schedule:
+    - cron: "30 16 * * *" # 16:30 UTC = 2:30am AEST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: site-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Date stamp
+        run: echo "DATA_DATE=$(date -u +%F)" >> "$GITHUB_ENV"
+
+      - name: Needs the weekly star data
+        run: |
+          if [ ! -f research/cache/star.json ]; then
+            echo "research/cache/star.json is missing - run 'Site data - weekly full refresh' once first." >&2
+            exit 1
+          fi
+
+      - name: Bulk pulls (lineage, official ratings, career results)
+        shell: pwsh
+        run: ./research/fetch-bulk.ps1 -OutDir "$env:RUNNER_TEMP/rd"
+
+      - name: Breeding Score + Breeder Rating
+        run: |
+          mkdir -p "$RUNNER_TEMP/new"
+          python research/breeder-score.py --dir "$RUNNER_TEMP/rd" --star research/cache/star.json \
+            --site "$RUNNER_TEMP/new/breeder-scores.json"
+
+      - name: Check and publish
+        run: |
+          bash research/publish-site-data.sh "Site data: daily refresh $DATA_DATE" \
+            "$RUNNER_TEMP/new/breeder-scores.json:lib/data/breeder-scores.json"

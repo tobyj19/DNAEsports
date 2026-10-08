@@ -15,6 +15,7 @@ Fallback order (owner's call):
 Every core with races also gets its most-raced distance.
 """
 import argparse, importlib.util, json, math, os
+from datetime import date
 from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -27,7 +28,8 @@ CATEGORIES = ["Sprint", "Sprint-Mid", "Mid", "Mid-Marathon", "Marathon", "All-Ro
 SOURCES = ["own", "parents", "raced"]
 CONFIDENCE = ["high", "medium", "low"]
 ESPORTS = [1000, 1200, 1400, 1600, 1800, 2000, 2200]
-GENERATED = "2026-10-08"
+# Date the data was refreshed; the automated jobs set DATA_DATE, otherwise today.
+GENERATED = os.environ.get("DATA_DATE") or date.today().isoformat()
 
 
 def nearest_esports(d):

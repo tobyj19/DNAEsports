@@ -1,4 +1,4 @@
-# Are win % / place % inherited — and is "racing above your PWR" inherited?
+# Are win % / place % inherited - and is "racing above your PWR" inherited?
 param([string]$Dir, [int]$MinRaces = 20)
 
 function Corr($xs, $ys) {

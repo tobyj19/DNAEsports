@@ -192,6 +192,19 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
 
 ## Refreshing the data
 
+**Automatic (Oct 9):** two GitHub Actions keep the site data current with no one involved:
+- **Site data - daily refresh** (`site-data-daily.yml`, 2:30am AEST): `fetch-bulk.ps1` →
+  `breeder-score.py` (using `research/cache/star.json`) → `publish-site-data.sh`. ~10 min.
+- **Site data - weekly full refresh** (`site-data-weekly.yml`, Mon 1am AEST): `fetch-bulk.ps1` +
+  `history-crawl.ps1` (one race-history pass replacing mode-crawl + star-crawl) →
+  star-analysis → distance-export → breeder-score → publish. ~2 h. Updates `research/cache/star.json`.
+- `publish-site-data.sh` runs `check-site-data.py` first: if any mode lost >5% of its cores,
+  nothing is published and the run shows as failed (the site keeps the previous data).
+  Crawls also fail if >2% of cores couldn't be read, or fetch-bulk read <15,000 cores.
+- Data date comes from `DATA_DATE` (set by the jobs) and shows on the Breeding card as "updated …".
+
+**Manual** (research / debugging):
+
 1. GitHub → Actions → **Research crawl** → Run workflow (~3–4 h, runs on GitHub's servers).
 2. Download: `gh run download --repo tobyj19/DNAEsports --name research-data --dir research-data`
 3. Rebuild the site files, in this order:
@@ -217,5 +230,4 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
   inherited, so these would come from offspring results), Esports-distance versions of
   the scores, a Value view (stud fee / splices left vs grade), and a game-wide
   "top breeders" leaderboard (would read the precomputed breeder-scores file).
-- **Refresh schedule:** the breeding / distance files are a snapshot from the Oct 8 crawl.
-  Consider re-running the Research crawl monthly (could add a `schedule:` to the workflow).
+- ~~Refresh schedule~~ — automated Oct 9 (daily + weekly, see "Refreshing the data").
