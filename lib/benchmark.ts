@@ -1,6 +1,6 @@
 // lib/benchmark.ts
 //
-// The owner's own benchmark finish times per esports distance (bike), used as
+// Eureka's benchmark finish times per esports distance (bike), used as
 // the default reference line on the core Telemetry view. Hand-set (Oct 2026),
 // not computed — edit here to change the benchmark.
 

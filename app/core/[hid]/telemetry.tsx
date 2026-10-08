@@ -22,7 +22,7 @@ const refTime = (ref: FieldRef, mode: RaceMode, d: number) =>
   ref === "benchmark" ? (mode === "bike" ? getBenchmarkTime(d) : null) : getFieldTime(mode, d, ref);
 // short = used in "faster than …"; long = legend + switch
 const REF_LABEL: Record<FieldRef, { short: string; long: string }> = {
-  benchmark: { short: "benchmark", long: "Benchmark" },
+  benchmark: { short: "Eureka's benchmark", long: "Eureka's benchmark" },
   avg: { short: "field avg", long: "Field average" },
   median: { short: "field median", long: "Field median" },
 };
@@ -121,12 +121,18 @@ export default function Telemetry({ info, races, mode }: { info: CoreInfo; races
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <SummaryTile label="Races" value={total.toLocaleString("en-US")} />
           <SummaryTile
-            label={`Beat the ${label.short}`}
+            label={`Beat ${ref === "benchmark" ? "" : "the "}${label.short}`}
             value={total ? `${Math.round((totalFaster / total) * 100)}%` : "—"}
             color={total && totalFaster / total >= 0.5 ? FASTER : SLOWER}
           />
           <SummaryTile label={`Avg vs ${label.short}`} value={<GapText gap={weightedGap} vs={label.short} />} small />
         </div>
+        {ref === "benchmark" && (
+          <p className="mt-3 rounded-xl border border-cyan/25 bg-cyan/[0.07] px-3 py-2 text-xs text-soft">
+            <span className="font-semibold text-cyan">Benchmark times courtesy of Eureka</span> — hand-set target times for
+            each esports distance. Huge thanks for sharing them.
+          </p>
+        )}
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted">
           <span className="flex items-center gap-1.5"><span className="h-3 w-0.5" style={{ background: FIELD }} /> {label.long}</span>
           <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 bg-white" /> This core&apos;s average</span>
