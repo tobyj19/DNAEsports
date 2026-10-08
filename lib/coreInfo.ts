@@ -106,6 +106,8 @@ export interface CoreModeInfo {
   skin: { id: number; name: string; rarity: string } | null;
   trail: string | null;
   distances: DistanceRecord[];
+  /** All distances combined (distance field is 0). */
+  career: DistanceRecord | null;
 }
 
 export interface CoreInfo {
@@ -141,17 +143,22 @@ export interface CoreInfo {
 
 const MODES: RaceMode[] = ["bike", "car", "horse"];
 
+function toRecord(distance: number, s: HStat): DistanceRecord {
+  return {
+    distance,
+    races: s.races_n,
+    winPct: s.win_p,
+    // win_p is a ratio; p2/p3 are counts
+    top3Pct: Math.min(1, s.win_p + (s.p2_n + s.p3_n) / s.races_n),
+  };
+}
+
+/** hstats is keyed by distance code (cb, x100 = meters), plus a "career" total. */
 function distanceRecords(stats: Record<string, HStat> | undefined): DistanceRecord[] {
   if (!stats) return [];
   return Object.entries(stats)
-    .filter(([, s]) => s.races_n > 0)
-    .map(([cb, s]) => ({
-      distance: Number(cb) * 100,
-      races: s.races_n,
-      winPct: s.win_p,
-      // win_p is a ratio; p2/p3 are counts
-      top3Pct: Math.min(1, s.win_p + (s.p2_n + s.p3_n) / s.races_n),
-    }))
+    .filter(([cb, s]) => /^\d+$/.test(cb) && s.races_n > 0)
+    .map(([cb, s]) => toRecord(Number(cb) * 100, s))
     .sort((a, b) => a.distance - b.distance);
 }
 
@@ -190,6 +197,10 @@ export async function getCoreInfo(hid: number): Promise<CoreInfo | null> {
       skin: skin ? { id: skin.skinid, name: skin.name, rarity: skin.rarity } : null,
       trail: assets?.trailsmap?.[mode] ?? null,
       distances: distanceRecords(info[`hstats_${mode}` as const]),
+      career: (() => {
+        const c = info[`hstats_${mode}` as const]?.career;
+        return c && c.races_n > 0 ? toRecord(0, c) : null;
+      })(),
     };
   }
 

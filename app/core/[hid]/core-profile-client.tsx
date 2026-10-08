@@ -19,6 +19,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "family", label: "Family" },
 ];
 const NOTES_MAX = 280;
+const MIN_RACES_FOR_BEST = 5;
 const MARKET_URL = "https://market.dnaracing.run/asset/core";
 const OFFICIAL_URL = "https://fbike.dnaracing.run/core";
 
@@ -303,15 +304,29 @@ function AssetTile({ kind, name, detail, accent }: { kind: string; name: string 
 }
 
 function Distances({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; accent: string }) {
-  const rows = info.modes[mode].distances.map((d) => ({
+  const { distances, career } = info.modes[mode];
+  const rows = distances.map((d) => ({
     distance: `${d.distance}m`,
+    races: d.races,
     win: +(d.winPct * 100).toFixed(1),
     top3: +(d.top3Pct * 100).toFixed(1),
   }));
-  const best = [...info.modes[mode].distances].sort((a, b) => b.winPct - a.winPct)[0];
+  // A 1-race 100% isn't a strength — only consider distances with a real sample.
+  const best = distances
+    .filter((d) => d.races >= MIN_RACES_FOR_BEST)
+    .sort((a, b) => b.winPct - a.winPct || b.races - a.races)[0];
 
   return (
-    <Card title={`Win rate by distance · ${mode}`}>
+    <Card
+      title={`Win rate by distance · ${mode}`}
+      right={
+        career && (
+          <span className="text-xs text-[#9CA6B0]">
+            Career: {career.races} races · {(career.winPct * 100).toFixed(0)}% wins · {(career.top3Pct * 100).toFixed(0)}% top 3
+          </span>
+        )
+      }
+    >
       {rows.length === 0 ? (
         <p className="text-sm text-[#9CA6B0]">No {mode} races yet.</p>
       ) : (
@@ -319,7 +334,9 @@ function Distances({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acc
           {best && (
             <p className="mb-3 text-sm">
               Strongest at <span className="font-semibold" style={{ color: accent }}>{best.distance}m</span>
-              <span className="text-[#9CA6B0]"> — {(best.winPct * 100).toFixed(0)}% wins, {(best.top3Pct * 100).toFixed(0)}% top 3</span>
+              <span className="text-[#9CA6B0]">
+                {" "}— {(best.winPct * 100).toFixed(0)}% wins, {(best.top3Pct * 100).toFixed(0)}% top 3 over {best.races} races
+              </span>
             </p>
           )}
           <ResponsiveContainer width="100%" height={260}>
@@ -330,6 +347,10 @@ function Distances({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acc
                 cursor={{ fill: "rgba(255,255,255,0.04)" }}
                 contentStyle={{ backgroundColor: "#12161C", border: "1px solid #232A33", borderRadius: 10 }}
                 formatter={(v) => `${v}%`}
+                labelFormatter={(label, payload) => {
+                  const races = payload?.[0]?.payload?.races;
+                  return races != null ? `${label} · ${races} race${races === 1 ? "" : "s"}` : label;
+                }}
               />
               <Bar dataKey="top3" name="Top 3" fill={`${accent}44`} radius={[6, 6, 0, 0]} />
               <Bar dataKey="win" name="Wins" fill={accent} radius={[6, 6, 0, 0]} />
