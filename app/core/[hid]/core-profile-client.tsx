@@ -7,7 +7,7 @@ import type { CoreInfo, CoreRef } from "@/lib/coreInfo";
 import { MAX_AGEING } from "@/lib/coreInfo";
 import type { RaceMode } from "@/lib/gameCoreSearch";
 import type { CoreRaces } from "@/lib/coreRaces";
-import { Card, Chip, DEFAULT_ACCENT, ELEMENT_ACCENT, MODE_ICON, Meter, Ring, formatDuration, useMounted } from "./ui";
+import { Card, Chip, DEFAULT_ACCENT, ELEMENT_ACCENT, MODE_ICON, Meter, Ring, formatDuration, heatColor, useMounted } from "./ui";
 import Telemetry from "./telemetry";
 import Estimates from "./estimates";
 import RaceHistory from "./race-history";
@@ -108,7 +108,7 @@ export default function CoreProfileClient({ info, initialMode }: { info: CoreInf
           </RacesGate>
         )}
         {tab === "distances" && <Distances info={info} mode={mode} accent={accent} />}
-        {tab === "family" && <Family info={info} />}
+        {tab === "family" && <Family info={info} mode={mode} />}
       </div>
     </div>
   );
@@ -382,35 +382,113 @@ function Distances({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acc
   );
 }
 
-function Family({ info }: { info: CoreInfo }) {
+type OffspringSort = "default" | "power" | "variance" | "adjOdds";
+const OFFSPRING_SORTS: { id: OffspringSort; label: string }[] = [
+  { id: "default", label: "Splice order" },
+  { id: "power", label: "PWR" },
+  { id: "variance", label: "VAR" },
+  { id: "adjOdds", label: "ADJ" },
+];
+
+function Family({ info, mode }: { info: CoreInfo; mode: RaceMode }) {
+  const [sort, setSort] = useState<OffspringSort>("default");
+  const offspring =
+    sort === "default"
+      ? info.offspring
+      : // Cores without enough races for an official number sink to the bottom.
+        [...info.offspring].sort((a, b) => (b.power[mode]?.[sort] ?? -1) - (a.power[mode]?.[sort] ?? -1));
+  const rated = info.offspring.map((c) => c.power[mode]?.power).filter((v): v is number => v != null);
+  const avgPower = rated.length ? rated.reduce((s, v) => s + v, 0) / rated.length : null;
+
   return (
     <>
-      <Card title="Parents">
+      <Card title={`Parents · ${mode}`}>
         {!info.father && !info.mother ? (
           <p className="text-sm text-muted">{info.type === "genesis" ? "Genesis core — no parents." : "No parent data."}</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <CoreLink core={info.father} role="Father" />
-            <CoreLink core={info.mother} role="Mother" />
+            <CoreLink core={info.father} role="Father" mode={mode} />
+            <CoreLink core={info.mother} role="Mother" mode={mode} />
           </div>
         )}
       </Card>
-      <Card title="Offspring" right={<span className="text-xs text-muted">{info.offspring.length}</span>}>
+      <Card
+        title={`Offspring · ${mode}`}
+        right={
+          info.offspring.length > 1 && (
+            <div className="flex rounded-lg border border-white/[0.07] bg-black/20 p-0.5 text-xs">
+              {OFFSPRING_SORTS.map((o) => (
+                <button
+                  key={o.id}
+                  onClick={() => setSort(o.id)}
+                  className={`rounded-md px-2 py-1 transition-colors ${sort === o.id ? "bg-white/10 text-white" : "text-muted hover:text-white"}`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )
+        }
+      >
         {info.offspring.length === 0 ? (
           <p className="text-sm text-muted">No offspring yet.</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {info.offspring.map((c) => (
-              <CoreLink key={c.hid} core={c} />
-            ))}
-          </div>
+          <>
+            <p className="mb-3 text-xs text-muted">
+              {info.offspring.length} offspring
+              {avgPower != null && (
+                <>
+                  {" "}· average PWR{" "}
+                  <span className="font-semibold" style={{ color: heatColor(avgPower) }}>{avgPower.toFixed(0)}%</span>
+                  {rated.length < info.offspring.length && ` (${rated.length} rated)`}
+                </>
+              )}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {offspring.map((c) => (
+                <CoreLink key={c.hid} core={c} mode={mode} />
+              ))}
+            </div>
+          </>
         )}
       </Card>
     </>
   );
 }
 
-function CoreLink({ core, role }: { core: CoreRef | null; role?: string }) {
+/** Compact power profile: three heat-coloured bars (same colour scale as the rings). */
+function MiniPower({ stats }: { stats: CoreRef["power"][RaceMode] }) {
+  if (!stats || (stats.power == null && stats.variance == null && stats.adjOdds == null)) {
+    return (
+      <div className="mt-2 text-[11px] text-faint">
+        {stats?.races ? `Unrated · ${stats.races} race${stats.races === 1 ? "" : "s"}` : "No races in this mode"}
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2 grid grid-cols-3 gap-2">
+      {(
+        [
+          ["PWR", stats.power],
+          ["VAR", stats.variance],
+          ["ADJ", stats.adjOdds],
+        ] as [string, number | null][]
+      ).map(([label, v]) => (
+        <div key={label}>
+          <div className="flex items-baseline justify-between text-[10px]">
+            <span className="font-semibold tracking-wider text-muted">{label}</span>
+            <span className="font-bold tabular-nums" style={{ color: heatColor(v) }}>{v != null ? v.toFixed(0) : "—"}</span>
+          </div>
+          <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/[0.06]">
+            <div className="h-full rounded-full" style={{ width: `${v ?? 0}%`, background: heatColor(v) }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CoreLink({ core, role, mode }: { core: CoreRef | null; role?: string; mode: RaceMode }) {
   if (!core) {
     return (
       <div className="rounded-xl border border-white/[0.07] bg-black/20 p-3 text-sm text-muted">
@@ -422,7 +500,7 @@ function CoreLink({ core, role }: { core: CoreRef | null; role?: string }) {
   const accent = (core.element && ELEMENT_ACCENT[core.element]) || DEFAULT_ACCENT;
   return (
     <Link
-      href={`/core/${core.hid}`}
+      href={`/core/${core.hid}?mode=${mode}`}
       className="group rounded-xl border border-white/[0.07] bg-black/20 p-3 transition-colors hover:border-white/20 hover:bg-white/[0.04]"
     >
       {role && <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{role}</div>}
@@ -433,6 +511,7 @@ function CoreLink({ core, role }: { core: CoreRef | null; role?: string }) {
       <div className="text-xs capitalize text-muted">
         {core.element ?? "—"}/{core.type} · {core.gender}
       </div>
+      <MiniPower stats={core.power[mode]} />
     </Link>
   );
 }

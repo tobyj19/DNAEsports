@@ -82,12 +82,21 @@ interface RawInfo {
   hstats_horse?: Record<string, HStat>;
 }
 
+export interface RefPower {
+  power: number | null; // null = not enough races for an official number yet
+  variance: number | null;
+  adjOdds: number | null;
+  races: number;
+}
+
 export interface CoreRef {
   hid: number;
   name: string;
   element: string | null;
   type: string;
   gender: string;
+  /** Official power stats per mode, for the Family tab's mini power profiles. */
+  power: Partial<Record<RaceMode, RefPower>>;
 }
 
 export interface DistanceRecord {
@@ -162,10 +171,38 @@ function distanceRecords(stats: Record<string, HStat> | undefined): DistanceReco
     .sort((a, b) => a.distance - b.distance);
 }
 
+interface BulkStat {
+  val: number | null;
+  fill: { per: number };
+}
+interface PowerBulkRow {
+  hid: number;
+  power: Partial<Record<RaceMode, { power: BulkStat; variance: BulkStat; adjodds: BulkStat; races_n: number } | null>>;
+}
+
+// power_bulk reports `val: null` (and per 0) until a core has enough races in that mode.
+const bulkPct = (s: BulkStat | undefined) => (s && s.val != null ? s.fill.per : null);
+
 async function fetchRefs(hids: number[]): Promise<Map<number, CoreRef>> {
   if (hids.length === 0) return new Map();
-  const rows = await post<(CoreRef | null)[]>("/cores/mini_bulk", { hids });
-  return new Map((rows ?? []).filter((r): r is CoreRef => r != null).map((r) => [r.hid, r]));
+  const [rows, powers] = await Promise.all([
+    post<(Omit<CoreRef, "power"> | null)[]>("/cores/mini_bulk", { hids }),
+    post<PowerBulkRow[]>("/cores/power_bulk", { hids }),
+  ]);
+  const powerByHid = new Map((powers ?? []).map((p) => [p.hid, p.power]));
+  return new Map(
+    (rows ?? [])
+      .filter((r): r is Omit<CoreRef, "power"> => r != null)
+      .map((r) => {
+        const raw = powerByHid.get(r.hid) ?? {};
+        const power: CoreRef["power"] = {};
+        for (const mode of MODES) {
+          const m = raw[mode];
+          if (m) power[mode] = { power: bulkPct(m.power), variance: bulkPct(m.variance), adjOdds: bulkPct(m.adjodds), races: m.races_n };
+        }
+        return [r.hid, { hid: r.hid, name: r.name, element: r.element, type: r.type, gender: r.gender, power }];
+      })
+  );
 }
 
 export async function getCoreInfo(hid: number): Promise<CoreInfo | null> {
