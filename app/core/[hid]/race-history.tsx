@@ -69,13 +69,14 @@ function RegularHistory({
   const stats = useMemo(() => {
     const n = filtered.length;
     const wins = filtered.filter((r) => r.pos === 1).length;
+    const top3 = filtered.filter((r) => r.pos <= 3).length;
     const blue = filtered.filter((r) => r.star === 2 || r.star === 5).length;
     const yellow = filtered.filter((r) => r.star === 3 || r.star === 5).length;
     // DEZ totals only — a handful of races pay in WETH, which can't be summed with DEZ.
     const dez = filtered.filter((r) => r.token === "DEZ");
     const prize = dez.reduce((s, r) => s + r.prize, 0);
     const fees = dez.reduce((s, r) => s + r.fee, 0);
-    return { n, wins, winPct: n ? wins / n : 0, blue: n ? blue / n : 0, yellow: n ? yellow / n : 0, prize, fees, profit: prize - fees };
+    return { n, wins, winPct: n ? wins / n : 0, top3Pct: n ? top3 / n : 0, blue: n ? blue / n : 0, yellow: n ? yellow / n : 0, prize, fees, profit: prize - fees };
   }, [filtered]);
 
   return (
@@ -127,6 +128,7 @@ function RegularHistory({
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <StatTile label="Races" value={stats.n.toLocaleString("en-US")} />
         <StatTile label="Win %" value={`${(stats.winPct * 100).toFixed(2)}%`} />
+        <StatTile label="Top 3 / podium %" value={`${(stats.top3Pct * 100).toFixed(2)}%`} />
         <StatTile label="Wins" value={stats.wins.toLocaleString("en-US")} />
         <StatTile label="Blue star" value={`★ ${(stats.blue * 100).toFixed(1)}%`} color="#60A5FA" />
         <StatTile label="Yellow star" value={`★ ${(stats.yellow * 100).toFixed(1)}%`} color="#FACC15" />

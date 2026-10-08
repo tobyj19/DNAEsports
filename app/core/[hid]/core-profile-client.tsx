@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { CoreInfo, CoreRef } from "@/lib/coreInfo";
 import { MAX_AGEING } from "@/lib/coreInfo";
 import type { RaceMode } from "@/lib/gameCoreSearch";
@@ -17,16 +16,14 @@ import type { CoreDistance } from "@/lib/distanceProfile";
 import type { BreederGrades, BreederScores } from "@/lib/breederScore";
 
 const MODES: RaceMode[] = ["bike", "car", "horse"];
-type Tab = "overview" | "telemetry" | "estimates" | "races" | "distances" | "family";
+type Tab = "overview" | "telemetry" | "estimates" | "races" | "family";
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "telemetry", label: "Telemetry" },
   { id: "estimates", label: "PWR / VAR by distance" },
   { id: "races", label: "Race History" },
-  { id: "distances", label: "Win rate by distance" },
   { id: "family", label: "Family" },
 ];
-const MIN_RACES_FOR_BEST = 5;
 const MARKET_URL = "https://market.dnaracing.run/asset/core";
 const OFFICIAL_URL = "https://fbike.dnaracing.run/core";
 
@@ -125,7 +122,6 @@ export default function CoreProfileClient({
             )}
           </RacesGate>
         )}
-        {tab === "distances" && <Distances info={info} mode={mode} accent={accent} />}
         {tab === "family" && <Family info={info} mode={mode} breeder={breeder} tiers={familyGrades} />}
       </div>
     </div>
@@ -355,69 +351,6 @@ function AssetTile({ kind, name, detail, accent }: { kind: string; name: string 
       <div className={`text-sm font-semibold ${name ? "" : "italic text-muted"}`}>{name ?? "None"}</div>
       {detail && <div className="text-[11px] capitalize text-muted">{detail}</div>}
     </div>
-  );
-}
-
-function Distances({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; accent: string }) {
-  const { distances, career } = info.modes[mode];
-  const rows = distances.map((d) => ({
-    distance: `${d.distance}m`,
-    races: d.races,
-    win: +(d.winPct * 100).toFixed(1),
-    top3: +(d.top3Pct * 100).toFixed(1),
-  }));
-  // A 1-race 100% isn't a strength — only consider distances with a real sample.
-  const best = distances
-    .filter((d) => d.races >= MIN_RACES_FOR_BEST)
-    .sort((a, b) => b.winPct - a.winPct || b.races - a.races)[0];
-
-  return (
-    <Card
-      title={`Win rate by distance · ${mode}`}
-      right={
-        career && (
-          <span className="text-xs text-muted">
-            Career: {career.races} races · {(career.winPct * 100).toFixed(0)}% wins · {(career.top3Pct * 100).toFixed(0)}% top 3
-          </span>
-        )
-      }
-    >
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted">No {mode} races yet.</p>
-      ) : (
-        <>
-          {best && (
-            <p className="mb-3 text-sm">
-              Strongest at <span className="font-semibold" style={{ color: accent }}>{best.distance}m</span>
-              <span className="text-muted">
-                {" "}— {(best.winPct * 100).toFixed(0)}% wins, {(best.top3Pct * 100).toFixed(0)}% top 3 over {best.races} races
-              </span>
-            </p>
-          )}
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={rows} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barGap={2}>
-              <XAxis dataKey="distance" tick={{ fill: "#8B9BB0", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis unit="%" tick={{ fill: "#8B9BB0", fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} />
-              <Tooltip
-                cursor={{ fill: "rgba(255,255,255,0.04)" }}
-                contentStyle={{ backgroundColor: "#0B111A", border: "1px solid #1B2533", borderRadius: 10 }}
-                formatter={(v) => `${v}%`}
-                labelFormatter={(label, payload) => {
-                  const races = payload?.[0]?.payload?.races;
-                  return races != null ? `${label} · ${races} race${races === 1 ? "" : "s"}` : label;
-                }}
-              />
-              <Bar dataKey="top3" name="Top 3" fill={`${accent}44`} radius={[6, 6, 0, 0]} />
-              <Bar dataKey="win" name="Wins" fill={accent} radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="mt-2 flex gap-4 text-xs text-muted">
-            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: accent }} /> Wins</span>
-            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: `${accent}44` }} /> Top 3</span>
-          </div>
-        </>
-      )}
-    </Card>
   );
 }
 
