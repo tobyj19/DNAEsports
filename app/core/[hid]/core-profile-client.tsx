@@ -185,9 +185,9 @@ function Overview({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acce
     <>
       <Card title={`Power profile · ${mode}`}>
         <div className="grid grid-cols-3 gap-2 py-1">
-          <Ring label="Power" value={m.powerPct} color="#FB923C" />
-          <Ring label="Variance" value={m.variancePct} color="#A3E635" />
-          <Ring label="Adj. Odds" value={m.adjOddsPct} color="#FACC15" />
+          <Ring label="Power" value={m.powerPct} />
+          <Ring label="Variance" value={m.variancePct} />
+          <Ring label="Adj. Odds" value={m.adjOddsPct} />
         </div>
         {m.powerPct == null && (
           <p className="mt-2 text-center text-xs text-muted">Not enough {mode} races yet for power stats.</p>

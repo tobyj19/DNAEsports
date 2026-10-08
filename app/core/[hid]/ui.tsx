@@ -42,9 +42,27 @@ export function Card({ title, right, children, className = "" }: {
   );
 }
 
-/** Circular gauge for a 0-100 stat; animates from 0 on mount. */
-export function Ring({ label, value, color }: { label: string; value: number | null; color: string }) {
+/** Heat colour for a 0-100 stat: light blue at 0, through green / yellow / orange, to red at 100. */
+export function heatColor(value: number | null): string {
+  if (value == null) return "#5B6878";
+  const t = Math.max(0, Math.min(100, value)) / 100;
+  const hue = 199 * (1 - t); // 199 = light blue, 0 = red
+  const l = (72 - 17 * t) / 100; // a little paler at the cool end, richer at the hot end
+  const s = 0.9;
+  // HSL → hex, so callers can append an alpha suffix (e.g. `${color}66`).
+  const k = (n: number) => (n + hue / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const channel = (n: number) =>
+    Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1))))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${channel(0)}${channel(8)}${channel(4)}`;
+}
+
+/** Circular gauge for a 0-100 stat; animates from 0 on mount. Colour defaults to heatColor(value). */
+export function Ring({ label, value, color }: { label: string; value: number | null; color?: string }) {
   const mounted = useMounted();
+  color = color ?? heatColor(value);
   const r = 34;
   const circumference = 2 * Math.PI * r;
   const shown = mounted && value != null ? value : 0;
