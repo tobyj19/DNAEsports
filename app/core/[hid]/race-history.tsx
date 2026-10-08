@@ -5,7 +5,7 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import type { SlimRace } from "@/lib/coreRaces";
 import { GATE_FILTERS, PAYOUT_FILTERS, isGridlockRace, isOneGateRace, isQuestRace } from "@/lib/coreRaces";
 import type { RaceMode } from "@/lib/gameCoreSearch";
-import { getPopulationAvgTime } from "@/lib/coreProfile";
+import { getFieldTime } from "@/lib/fieldTimes";
 import { Card } from "./ui";
 
 type View = "history" | "distro" | "speed";
@@ -232,12 +232,12 @@ function RaceList({ races, total, onMore, mode }: { races: SlimRace[]; total: nu
                 <th className="text-right font-semibold">Profit</th>
                 <th className="text-center font-semibold" title="Won">W</th>
                 <th className="text-center font-semibold" title="Top 3">T3</th>
-                <th className="text-center font-semibold" title="Faster than the field average (bike)">Fld</th>
+                <th className="text-center font-semibold" title="Faster than the field average">Fld</th>
               </tr>
             </thead>
             <tbody>
               {races.map((r, i) => {
-                const field = mode === "bike" ? getPopulationAvgTime(r.distance) : null;
+                const field = getFieldTime(mode, r.distance, "avg");
                 const profit = r.prize - r.fee;
                 return (
                   <tr key={`${r.at}-${i}`} className="border-t border-white/[0.05]">

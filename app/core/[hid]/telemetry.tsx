@@ -4,8 +4,9 @@ import { useState } from "react";
 import { ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, XAxis, YAxis, Cell } from "recharts";
 import type { SlimRace } from "@/lib/coreRaces";
 import type { CoreInfo } from "@/lib/coreInfo";
-import { getPopulationAvgTime, getPopulationMedianTime } from "@/lib/coreProfile";
 import { getBenchmarkTime } from "@/lib/benchmark";
+import { getFieldTime } from "@/lib/fieldTimes";
+import type { RaceMode } from "@/lib/gameCoreSearch";
 import { Card } from "./ui";
 
 const DISTANCES = [1000, 1200, 1400, 1600, 1800, 2000, 2200];
@@ -16,19 +17,22 @@ const SLOWER = "#F87171";
 const FIELD = "#FB923C";
 
 type FieldRef = "benchmark" | "avg" | "median";
-const REF_TIME: Record<FieldRef, (d: number) => number | null> = {
-  benchmark: getBenchmarkTime,
-  avg: getPopulationAvgTime,
-  median: getPopulationMedianTime,
-};
+// The benchmark is bike times, so car / horse only offer the field lines.
+const refTime = (ref: FieldRef, mode: RaceMode, d: number) =>
+  ref === "benchmark" ? (mode === "bike" ? getBenchmarkTime(d) : null) : getFieldTime(mode, d, ref);
 // short = used in "faster than …"; long = legend + switch
 const REF_LABEL: Record<FieldRef, { short: string; long: string }> = {
   benchmark: { short: "benchmark", long: "Benchmark" },
   avg: { short: "field avg", long: "Field average" },
   median: { short: "field median", long: "Field median" },
 };
-const HAS_MEDIANS = DISTANCES.every((d) => getPopulationMedianTime(d) != null);
-const REF_OPTIONS: FieldRef[] = HAS_MEDIANS ? ["benchmark", "avg", "median"] : ["benchmark", "avg"];
+function refOptions(mode: RaceMode): FieldRef[] {
+  const opts: FieldRef[] = mode === "bike" ? ["benchmark"] : [];
+  for (const k of ["avg", "median"] as const) {
+    if (DISTANCES.every((d) => getFieldTime(mode, d, k) != null)) opts.push(k);
+  }
+  return opts;
+}
 
 interface DistTelemetry {
   distance: number;
@@ -41,10 +45,10 @@ interface DistTelemetry {
   slower: number;
 }
 
-function summarise(races: SlimRace[], distance: number, ref: FieldRef): DistTelemetry {
-  const rs = races.filter((r) => r.mode === "bike" && r.distance === distance);
+function summarise(races: SlimRace[], distance: number, ref: FieldRef, mode: RaceMode): DistTelemetry {
+  const rs = races.filter((r) => r.mode === mode && r.distance === distance);
   const times = rs.map((r) => r.time);
-  const field = REF_TIME[ref](distance);
+  const field = refTime(ref, mode, distance);
   const n = times.length;
   const avg = n ? times.reduce((a, b) => a + b, 0) / n : null;
   // Sample standard deviation (n-1), matching the original spreadsheet's STDEV.
@@ -73,9 +77,19 @@ function GapText({ gap, vs, className = "" }: { gap: number | null; vs: string; 
   );
 }
 
-export default function Telemetry({ info, races }: { info: CoreInfo; races: SlimRace[]; accent: string }) {
-  const [ref, setRef] = useState<FieldRef>("benchmark");
-  const rows = DISTANCES.map((d) => summarise(races, d, ref));
+export default function Telemetry({ info, races, mode }: { info: CoreInfo; races: SlimRace[]; mode: RaceMode }) {
+  const options = refOptions(mode);
+  const [chosen, setRef] = useState<FieldRef>("benchmark");
+  // Fall back to the first available line when the chosen one doesn't exist for this mode.
+  const ref = options.includes(chosen) ? chosen : options[0];
+  if (!ref) {
+    return (
+      <Card title={`Telemetry · ${info.name} · ${mode}`}>
+        <p className="text-sm text-muted">Field times for {mode} races aren&apos;t available yet.</p>
+      </Card>
+    );
+  }
+  const rows = DISTANCES.map((d) => summarise(races, d, ref, mode));
   const label = REF_LABEL[ref];
   const total = rows.reduce((n, r) => n + r.times.length, 0);
   const totalFaster = rows.reduce((n, r) => n + r.faster, 0);
@@ -87,11 +101,11 @@ export default function Telemetry({ info, races }: { info: CoreInfo; races: Slim
   return (
     <div className="flex flex-col gap-4">
       <Card
-        title={`Telemetry · ${info.name} · bike, esports distances`}
+        title={`Telemetry · ${info.name} · ${mode === "bike" ? "bike, esports distances" : `${mode}, 1000–2200m`}`}
         right={
           (
             <div className="flex rounded-lg border border-white/[0.07] bg-black/20 p-0.5 text-xs">
-              {REF_OPTIONS.map((r) => (
+              {options.map((r) => (
                 <button
                   key={r}
                   onClick={() => setRef(r)}

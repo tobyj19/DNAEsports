@@ -1,12 +1,12 @@
 // lib/raceSim.ts
 //
-// Per-distance PWR / VAR estimates for a core, worked out from its bike-mode
-// race times, plus the race simulation the Race Sim page runs.
+// Per-distance PWR / VAR estimates for a core, worked out from its race times
+// in one mode (bike / car / horse), plus the race simulation the Race Sim page runs.
 //
 // How the estimates work (calibrated Oct 2026 against 32 cores that have
 // official numbers):
 //   - Every race time is turned into "% slower or faster than the game-wide
-//     average time at that distance" (lib/data/population-avg-times.json).
+//     average time at that distance and mode".
 //   - PWR  = a straight-line fit of that % against the game's official power.
 //            All-distance estimate lands within ~0.9 points of the official.
 //   - VAR  = how spread out a core's times are *within* each distance, divided
@@ -16,29 +16,53 @@
 //   - Thin samples lean on the core's all-distance form, so 2 races at a
 //     distance can't produce an extreme number on their own.
 //
+// Bike is the original calibration above. Car and horse use the same method,
+// fitted Oct 2026 against every core with official car / horse numbers (see
+// lib/data/mode-calibration.json for the fitted values).
+//
 // The official numbers appear to be computed from paid races only, so the
 // page offers a paid-only switch; both versions are computed here.
 
 import popAvgTimes from "./data/population-avg-times.json";
+import modeCalibration from "./data/mode-calibration.json";
 import { getRaceHistory, type RaceHistoryEntry } from "./api";
 import { ESPORTS_DISTANCES } from "./distance-strategy";
 
 export const SIM_DISTANCES = ESPORTS_DISTANCES;
 
-const POP: Record<number, number> = Object.fromEntries(
-  Object.entries(popAvgTimes as Record<string, { avgTime: number }>).map(([d, v]) => [Number(d), v.avgTime])
-);
+export type SimMode = "bike" | "car" | "horse";
 
-/** Typical race-to-race spread of one core's times at each distance, as % of the average time. */
-const TYPICAL_SD_PCT: Record<number, number> = {
-  1000: 1.92, 1200: 1.59, 1400: 1.47, 1600: 1.39, 1800: 1.19, 2000: 0.92, 2200: 0.95,
+interface ModeCalibration {
+  pop: Record<number, number>; // field average time per distance
+  typicalSdPct: Record<number, number>; // typical race-to-race spread of one core, % of average time
+  pwrIntercept: number;
+  pwrSlope: number; // per 1% slower than the field average
+  varIntercept: number;
+  varSlope: number; // per 1.0x the typical spread
+}
+
+const BIKE: ModeCalibration = {
+  pop: Object.fromEntries(
+    Object.entries(popAvgTimes as Record<string, { avgTime: number }>).map(([d, v]) => [Number(d), v.avgTime])
+  ),
+  typicalSdPct: { 1000: 1.92, 1200: 1.59, 1400: 1.47, 1600: 1.39, 1800: 1.19, 2000: 0.92, 2200: 0.95 },
+  pwrIntercept: 80.5,
+  pwrSlope: -5.02,
+  varIntercept: -0.2,
+  varSlope: 76.3,
 };
 
-// Straight-line fits against the game's official numbers.
-const PWR_INTERCEPT = 80.5;
-const PWR_SLOPE = -5.02; // per 1% slower than the population average
-const VAR_INTERCEPT = -0.2;
-const VAR_SLOPE = 76.3; // per 1.0x the typical spread
+const toNumKeys = (o: Record<string, number>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [Number(k), v]));
+const fitted = modeCalibration as Partial<Record<SimMode, Omit<ModeCalibration, "pop" | "typicalSdPct"> & { pop: Record<string, number>; typicalSdPct: Record<string, number> }>>;
+
+const CALIBRATION: Partial<Record<SimMode, ModeCalibration>> = { bike: BIKE };
+for (const mode of ["car", "horse"] as const) {
+  const f = fitted[mode];
+  if (f) CALIBRATION[mode] = { ...f, pop: toNumKeys(f.pop), typicalSdPct: toNumKeys(f.typicalSdPct) };
+}
+
+/** Whether PWR/VAR estimates are available for a mode. */
+export const hasCalibration = (mode: SimMode) => CALIBRATION[mode] != null;
 
 const MEAN_PRIOR_RACES = 3; // thin samples lean this hard on all-distance form
 const SD_PRIOR_RACES = 5;
@@ -80,11 +104,15 @@ function median(xs: number[]): number {
 }
 
 /** Turns raw race history into per-distance estimates. Returns null when there are no usable races. */
-export function estimateFromRaces(races: RaceHistoryEntry[], paidOnly: boolean): EstimateSet | null {
+export function estimateFromRaces(races: RaceHistoryEntry[], paidOnly: boolean, mode: SimMode = "bike"): EstimateSet | null {
+  const cal = CALIBRATION[mode];
+  if (!cal) return null;
+  const POP = cal.pop;
+  const TYPICAL_SD_PCT = cal.typicalSdPct;
   // % deviation from the population average, grouped by distance
   const byDist = new Map<number, number[]>();
   for (const r of races) {
-    if (r.rvmode !== "bike" || r.time == null || r.cb == null) continue;
+    if (r.rvmode !== mode || r.time == null || r.cb == null) continue;
     if (paidOnly && !(Number(r.fee) > 0)) continue;
     const dist = Math.round(Number(r.cb) * 100);
     const pop = POP[dist];
@@ -114,8 +142,8 @@ export function estimateFromRaces(races: RaceHistoryEntry[], paidOnly: boolean):
   });
   const relSpread = z.length >= 6 ? Math.sqrt(mean(z.map((v) => v * v))) : null;
 
-  const toPower = (dev: number) => round(PWR_INTERCEPT + PWR_SLOPE * dev, 1);
-  const toVariance = (rel: number) => Math.round(clamp(VAR_INTERCEPT + VAR_SLOPE * rel, 0, 100));
+  const toPower = (dev: number) => round(cal.pwrIntercept + cal.pwrSlope * dev, 1);
+  const toVariance = (rel: number) => Math.round(clamp(cal.varIntercept + cal.varSlope * rel, 0, 100));
 
   const byDistance: Record<number, DistanceEstimate> = {};
   for (const dist of SIM_DISTANCES) {

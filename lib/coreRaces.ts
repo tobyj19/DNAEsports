@@ -36,7 +36,8 @@ export interface SlimRace {
 
 export interface CoreRaces {
   races: SlimRace[];
-  estimates: { all: EstimateSet | null; paid: EstimateSet | null };
+  /** Per-mode estimates; null when that mode has no calibration or no usable races. */
+  estimates: Record<RaceMode, { all: EstimateSet | null; paid: EstimateSet | null }>;
   tourneyProfit: number;
 }
 
@@ -101,7 +102,11 @@ export async function getCoreRaces(hid: number): Promise<CoreRaces> {
     .sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
   return {
     races,
-    estimates: { all: estimateFromRaces(raw, false), paid: estimateFromRaces(raw, true) },
+    estimates: {
+      bike: { all: estimateFromRaces(raw, false, "bike"), paid: estimateFromRaces(raw, true, "bike") },
+      car: { all: estimateFromRaces(raw, false, "car"), paid: estimateFromRaces(raw, true, "car") },
+      horse: { all: estimateFromRaces(raw, false, "horse"), paid: estimateFromRaces(raw, true, "horse") },
+    },
     tourneyProfit,
   };
 }

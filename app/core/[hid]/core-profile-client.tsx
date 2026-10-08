@@ -22,8 +22,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "distances", label: "Win rate by distance" },
   { id: "family", label: "Family" },
 ];
-// Telemetry and the PWR/VAR estimates are built from bike races (the field averages are bike-only).
-const BIKE_ONLY_TABS: Tab[] = ["telemetry", "estimates"];
 const NOTES_MAX = 280;
 const MIN_RACES_FOR_BEST = 5;
 const MARKET_URL = "https://market.dnaracing.run/asset/core";
@@ -97,11 +95,8 @@ export default function CoreProfileClient({ info, initialMode }: { info: CoreInf
       <div className="min-w-0 flex flex-col gap-4">
         <Hero info={info} accent={accent} />
         {tab === "overview" && <Overview info={info} mode={mode} accent={accent} />}
-        {BIKE_ONLY_TABS.includes(tab) && mode !== "bike" && (
-          <p className="text-xs text-amber">This view uses bike races only — the mode switch doesn&apos;t apply here.</p>
-        )}
-        {tab === "telemetry" && <RacesGate state={races}>{(d) => <Telemetry info={info} races={d.races} accent={accent} />}</RacesGate>}
-        {tab === "estimates" && <RacesGate state={races}>{(d) => <Estimates estimates={d.estimates} official={info.modes.bike} />}</RacesGate>}
+        {tab === "telemetry" && <RacesGate state={races}>{(d) => <Telemetry info={info} races={d.races} mode={mode} />}</RacesGate>}
+        {tab === "estimates" && <RacesGate state={races}>{(d) => <Estimates estimates={d.estimates[mode]} official={info.modes[mode]} mode={mode} />}</RacesGate>}
         {tab === "races" && (
           <RacesGate state={races}>
             {(d) => <RaceHistory races={d.races} mode={mode} tourneyProfit={d.tourneyProfit} accent={accent} />}

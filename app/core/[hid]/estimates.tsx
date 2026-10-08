@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { EstimateSet } from "@/lib/raceSim";
-import { SIM_DISTANCES, THIN_SAMPLE } from "@/lib/raceSim";
+import { SIM_DISTANCES, THIN_SAMPLE, hasCalibration, type SimMode } from "@/lib/raceSim";
 import type { CoreModeInfo } from "@/lib/coreInfo";
 import { Card } from "./ui";
 
@@ -13,9 +13,11 @@ const VAR_COLOR = "#A3E635";
 export default function Estimates({
   estimates,
   official,
+  mode,
 }: {
   estimates: { all: EstimateSet | null; paid: EstimateSet | null };
   official: CoreModeInfo;
+  mode: SimMode;
 }) {
   const [paidOnly, setPaidOnly] = useState(false);
   const est = paidOnly ? estimates.paid : estimates.all;
@@ -36,8 +38,12 @@ export default function Estimates({
 
   if (!est) {
     return (
-      <Card title="Est. PWR & VAR by distance" right={toggle}>
-        <p className="text-sm text-muted">No {paidOnly ? "paid " : ""}bike races at the esports distances yet.</p>
+      <Card title={`Est. PWR & VAR by distance · ${mode}`} right={toggle}>
+        <p className="text-sm text-muted">
+          {hasCalibration(mode)
+            ? `No ${paidOnly ? "paid " : ""}${mode} races at 1000–2200m yet.`
+            : `PWR/VAR estimates for ${mode} aren't calibrated yet.`}
+        </p>
       </Card>
     );
   }
@@ -46,7 +52,7 @@ export default function Estimates({
 
   return (
     <>
-      <Card title="Est. PWR & VAR by distance · bike" right={toggle}>
+      <Card title={`Est. PWR & VAR by distance · ${mode}`} right={toggle}>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
           <Summary label="Est. PWR" value={est.power} color={PWR_COLOR} />
           <Summary label="Official PWR" value={official.powerPct} />
