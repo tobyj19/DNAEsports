@@ -5,18 +5,30 @@ import { ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, XAxis, YAxis
 import type { SlimRace } from "@/lib/coreRaces";
 import type { CoreInfo } from "@/lib/coreInfo";
 import { getPopulationAvgTime, getPopulationMedianTime } from "@/lib/coreProfile";
+import { getBenchmarkTime } from "@/lib/benchmark";
 import { Card } from "./ui";
 
 const DISTANCES = [1000, 1200, 1400, 1600, 1800, 2000, 2200];
-const WINDOW_SEC = 4; // every chart shows the field line ± 4s, so rows compare directly
+const WINDOW_SEC = 4; // every chart shows the reference line ± 4s, so rows compare directly
 const SMALL_SAMPLE = 25;
 const FASTER = "#4ADE80";
 const SLOWER = "#F87171";
 const FIELD = "#FB923C";
 
-type FieldRef = "avg" | "median";
-const fieldTime = (d: number, ref: FieldRef) => (ref === "median" ? getPopulationMedianTime(d) : getPopulationAvgTime(d));
+type FieldRef = "benchmark" | "avg" | "median";
+const REF_TIME: Record<FieldRef, (d: number) => number | null> = {
+  benchmark: getBenchmarkTime,
+  avg: getPopulationAvgTime,
+  median: getPopulationMedianTime,
+};
+// short = used in "faster than …"; long = legend + switch
+const REF_LABEL: Record<FieldRef, { short: string; long: string }> = {
+  benchmark: { short: "benchmark", long: "Benchmark" },
+  avg: { short: "field avg", long: "Field average" },
+  median: { short: "field median", long: "Field median" },
+};
 const HAS_MEDIANS = DISTANCES.every((d) => getPopulationMedianTime(d) != null);
+const REF_OPTIONS: FieldRef[] = HAS_MEDIANS ? ["benchmark", "avg", "median"] : ["benchmark", "avg"];
 
 interface DistTelemetry {
   distance: number;
@@ -24,7 +36,7 @@ interface DistTelemetry {
   times: number[];
   avg: number | null;
   sd: number | null;
-  gap: number | null; // core avg − field line (avg or median); negative = faster
+  gap: number | null; // core avg − reference line; negative = faster
   faster: number;
   slower: number;
 }
@@ -32,7 +44,7 @@ interface DistTelemetry {
 function summarise(races: SlimRace[], distance: number, ref: FieldRef): DistTelemetry {
   const rs = races.filter((r) => r.mode === "bike" && r.distance === distance);
   const times = rs.map((r) => r.time);
-  const field = fieldTime(distance, ref);
+  const field = REF_TIME[ref](distance);
   const n = times.length;
   const avg = n ? times.reduce((a, b) => a + b, 0) / n : null;
   // Sample standard deviation (n-1), matching the original spreadsheet's STDEV.
@@ -50,21 +62,21 @@ function summarise(races: SlimRace[], distance: number, ref: FieldRef): DistTele
   };
 }
 
-function GapText({ gap, className = "" }: { gap: number | null; className?: string }) {
+function GapText({ gap, vs, className = "" }: { gap: number | null; vs: string; className?: string }) {
   if (gap == null) return <span className={`text-[#9CA6B0] ${className}`}>No races</span>;
   const faster = gap < 0;
   return (
     <span className={className} style={{ color: faster ? FASTER : SLOWER }}>
       {Math.abs(gap).toFixed(2)}s {faster ? "faster" : "slower"}
-      <span className="text-[#9CA6B0] font-normal"> than field</span>
+      <span className="text-[#9CA6B0] font-normal"> than {vs}</span>
     </span>
   );
 }
 
 export default function Telemetry({ info, races }: { info: CoreInfo; races: SlimRace[]; accent: string }) {
-  const [ref, setRef] = useState<FieldRef>("avg");
+  const [ref, setRef] = useState<FieldRef>("benchmark");
   const rows = DISTANCES.map((d) => summarise(races, d, ref));
-  const refLabel = ref === "median" ? "median" : "average";
+  const label = REF_LABEL[ref];
   const total = rows.reduce((n, r) => n + r.times.length, 0);
   const totalFaster = rows.reduce((n, r) => n + r.faster, 0);
   // Races-weighted average gap across every distance raced.
@@ -77,15 +89,15 @@ export default function Telemetry({ info, races }: { info: CoreInfo; races: Slim
       <Card
         title={`Telemetry · ${info.name} · bike, esports distances`}
         right={
-          HAS_MEDIANS && (
+          (
             <div className="flex rounded-lg border border-white/[0.07] bg-black/20 p-0.5 text-xs">
-              {(["avg", "median"] as FieldRef[]).map((r) => (
+              {REF_OPTIONS.map((r) => (
                 <button
                   key={r}
                   onClick={() => setRef(r)}
                   className={`rounded-md px-2.5 py-1 transition-colors ${ref === r ? "bg-white/10 text-white" : "text-[#9CA6B0] hover:text-white"}`}
                 >
-                  Field {r === "avg" ? "average" : "median"}
+                  {REF_LABEL[r].long}
                 </button>
               ))}
             </div>
@@ -95,24 +107,24 @@ export default function Telemetry({ info, races }: { info: CoreInfo; races: Slim
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <SummaryTile label="Races" value={total.toLocaleString("en-US")} />
           <SummaryTile
-            label="Beat the field"
+            label={`Beat the ${label.short}`}
             value={total ? `${Math.round((totalFaster / total) * 100)}%` : "—"}
             color={total && totalFaster / total >= 0.5 ? FASTER : SLOWER}
           />
-          <SummaryTile label="Avg vs field" value={<GapText gap={weightedGap} />} small />
+          <SummaryTile label={`Avg vs ${label.short}`} value={<GapText gap={weightedGap} vs={label.short} />} small />
         </div>
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-[#9CA6B0]">
-          <span className="flex items-center gap-1.5"><span className="h-3 w-0.5" style={{ background: FIELD }} /> Field {refLabel} (game-wide)</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-0.5" style={{ background: FIELD }} /> {label.long}</span>
           <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 bg-white" /> This core&apos;s average</span>
-          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: FASTER }} /> Faster than field</span>
-          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: SLOWER }} /> Slower than field</span>
+          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: FASTER }} /> Faster than {label.short}</span>
+          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: SLOWER }} /> Slower than {label.short}</span>
         </div>
       </Card>
 
       <Card>
         <div className="divide-y divide-white/[0.06]">
           {rows.map((r) => (
-            <DistanceRow key={r.distance} t={r} />
+            <DistanceRow key={r.distance} t={r} vs={label.short} />
           ))}
         </div>
       </Card>
@@ -131,7 +143,7 @@ function SummaryTile({ label, value, color, small }: { label: string; value: Rea
   );
 }
 
-function DistanceRow({ t }: { t: DistTelemetry }) {
+function DistanceRow({ t, vs }: { t: DistTelemetry; vs: string }) {
   const n = t.times.length;
   const small = n > 0 && n < SMALL_SAMPLE;
   const fasterPct = n ? (t.faster / n) * 100 : 0;
@@ -147,7 +159,7 @@ function DistanceRow({ t }: { t: DistTelemetry }) {
       </div>
 
       <div className="min-w-0">
-        <GapText gap={t.gap} className="text-sm font-semibold" />
+        <GapText gap={t.gap} vs={vs} className="text-sm font-semibold" />
         <div className="mt-1 text-xs text-[#9CA6B0] tabular-nums">
           Avg <span className="text-white">{t.avg != null ? `${t.avg.toFixed(2)}s` : "—"}</span>
           <span className="mx-1.5">·</span>
