@@ -1,4 +1,4 @@
-# Breeding / calibration research — handoff notes (Oct 8, 2026)
+# Breeding / calibration research — handoff notes (updated Oct 9, 2026)
 
 Working notes so any computer or Claude session can pick this up. The live site
 does not depend on anything here.
@@ -149,7 +149,7 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
 - Site: Overview + Family tabs show both cards; family tiles show the Breeding grade and an
   "R" Breeder Rating grade.
 
-### Breeder Score v1 (Oct 8 — `breeder-score.py --dir research-data --out research-data/breeder-scores.json`, after star-analysis.py)
+### Breeder Score v1 — superseded by v2 above (Oct 8 — `breeder-score.py --dir research-data --out research-data/breeder-scores.json`, after star-analysis.py)
 
 - Weights (approved): PWR 45, ADJ 20/25/25, Win 15, Place 10, Beats-sims 10/5/5 (bike/car/horse);
   no separate star weight.
@@ -175,22 +175,48 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
   `lib/breederScore.ts`) → Breeder Score card on the core Overview tab. Rerun after each
   crawl: star-analysis.py, then breeder-score.py with `--site`.
 
-## Agreed Breeder Score plan (pending final weights)
+## What's live (as of Oct 9, 2026)
 
-- Per mode. 0–100 = percentile of breeding value. Tiers: S top 2% / A 8% / B 20% /
-  C 40% / D 30% (adjust S if too thin).
-- Breeding value = own PWR + 2 × shrunk lift; unrated cores fall back to parents.
-- Confidence: Proven 8+ rated offspring / Some evidence 3–7 / Pedigree estimate 0–2.
-- Starting weights ~ PWR 45%, ADJ 20%, Results 35% (win, place, blue★, gold★,
-  "beats sims") — confirm with the star data. Plus a distance-profile trait.
-- Shown separately: Upside (% offspring beating parents), Ceiling, Consistency,
-  Esports versions (7 esports distances), Value (stud fee / splices left).
-- Placement: core Overview (score card), Family tab (per-offspring "vs expected",
-  personal outcome chart), Breeding page (rankings, pair predictor).
+- **Core page:** Overview has the Breeding Score + Breeder Rating cards (with Overall,
+  Own stats, Lineage, Offspring score) and the Distance profile card. Family tab shows
+  grades on every parent/offspring tile, burnt cores (with a "Hide burnt" pill).
+  Race History has a Regular / Esports switch.
+- **Pair Predictor** (`/breeding/predict`) and **Pair Finder** (`/breeding/finder`) —
+  the old Breeding and Arena pages are retired.
+- **Power Search** shows a distance tag per mode ("Likely …" when inferred from parents,
+  dashed outline) and has a Distance type filter + "Proven profiles only". Tags are added
+  server-side in `app/api/core-power-search/route.ts`; colours live in `lib/distanceTypes.ts`.
+- Site data files built from the research: `lib/data/breeder-scores.json`,
+  `lib/data/distance-profiles.json`, `lib/data/mode-calibration.json` (PWR/VAR estimate
+  calibration, all three modes — labelled on the site as "DNA Analytics benchmark").
 
-## Next steps
+## Refreshing the data
 
-1. ~~Run the crawl, star chart, per-core star rates, "beats sims"~~ — done Oct 8
-   (see Star analysis above; per-core values in `research-data/star.json`).
-2. Propose final weights to the owner for approval.
-3. Build: Breeder Score card, Family "vs expected", Breeding page rankings + pair predictor.
+1. GitHub → Actions → **Research crawl** → Run workflow (~3–4 h, runs on GitHub's servers).
+2. Download: `gh run download --repo tobyj19/DNAEsports --name research-data --dir research-data`
+3. Rebuild the site files, in this order:
+   ```
+   python research/star-analysis.py --dir research-data --out research-data/star.json
+   python research/distance-profile.py --dir research-data --out research-data/distance.json
+   python research/distance-export.py --dir research-data --site lib/data/distance-profiles.json
+   python research/breeder-score.py --dir research-data --site lib/data/breeder-scores.json
+   ```
+   (`--validate` on breeder-score.py / distance-export.py re-runs the held-out checks.)
+4. Optional — refit PWR/VAR estimates: `calibrate.ps1` (see table above) and copy the
+   output into `lib/data/mode-calibration.json`.
+5. Commit the updated `lib/data/*.json` and push; Vercel redeploys.
+
+## Open items / ideas
+
+- **Stud barn snapshot cadence:** the workflow is scheduled every 30 min, but GitHub
+  throttles free scheduled jobs — it has been running every ~5–7 h, so Pair Finder's
+  stud barn can be hours old. Options if freshness matters: an external cron hitting
+  `workflow_dispatch`, or a Vercel cron route.
+- **Esports Telemetry** — on hold (owner's call). Esports data is totals only
+  (`/fbike/esports/hstats`): avg/best time per distance could be shown, not individual races.
+- **Not built yet from the original plan:** Ceiling / Consistency scores (VAR isn't
+  inherited, so these would come from offspring results), Esports-distance versions of
+  the scores, a Value view (stud fee / splices left vs grade), and a game-wide
+  "top breeders" leaderboard (would read the precomputed breeder-scores file).
+- **Refresh schedule:** the breeding / distance files are a snapshot from the Oct 8 crawl.
+  Consider re-running the Research crawl monthly (could add a `schedule:` to the workflow).
