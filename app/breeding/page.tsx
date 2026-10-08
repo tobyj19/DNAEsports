@@ -103,7 +103,7 @@ export default function BreedingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0F0E] text-[#E9F2ED]">
+    <div className="min-h-screen bg-ink text-fg">
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link
         href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
@@ -111,8 +111,8 @@ export default function BreedingPage() {
       />
 
       <div className="mx-auto max-w-6xl px-6 py-10 sm:px-10">
-        <header className="mb-10 border-b border-[#22302A] pb-6">
-          <p className="text-sm text-[#7D8C84]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+        <header className="mb-10 border-b border-line pb-6">
+          <p className="text-sm text-muted" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
             DNA-Esports / Strategy
           </p>
           <h1
@@ -121,11 +121,11 @@ export default function BreedingPage() {
           >
             Breeding analysis
           </h1>
-          <p className="mt-2 max-w-2xl text-[#B7C3BC]">
+          <p className="mt-2 max-w-2xl text-soft">
             Load one vault to explore breeding within it, or two to compare cross-vault
             pairings. This is a "what if" analysis — every male core is treated as a possible
             sire here regardless of whether it's actually listed for stud right now. For real,
-            actionable studs, see the <a href="/breeding/arena" className="text-[#8CFF6B] underline">Arena</a> page.
+            actionable studs, see the <a href="/breeding/arena" className="text-cyan underline">Arena</a> page.
           </p>
         </header>
 
@@ -133,7 +133,7 @@ export default function BreedingPage() {
           <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
             <div>
               <label
-                className="mb-1 block text-xs uppercase tracking-wide text-[#7D8C84]"
+                className="mb-1 block text-xs uppercase tracking-wide text-muted"
                 style={{ fontFamily: "'IBM Plex Mono', monospace" }}
               >
                 Vault A — wallet address
@@ -142,13 +142,13 @@ export default function BreedingPage() {
                 value={vaultAInput}
                 onChange={(e) => setVaultAInput(e.target.value)}
                 placeholder="0xaf1320faa9a484a4702ec16ffec18260cc42c3c2"
-                className="w-full rounded-md border border-[#22302A] bg-[#121815] px-4 py-2.5 text-[#E9F2ED] placeholder-[#54615A] outline-none focus:border-[#8CFF6B] focus-visible:ring-2 focus-visible:ring-[#8CFF6B]/40"
+                className="w-full rounded-md border border-line bg-panel px-4 py-2.5 text-fg placeholder-faint outline-none focus:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/40"
               />
             </div>
             {!showVaultB && (
               <button
                 onClick={() => setShowVaultB(true)}
-                className="self-end rounded-md border border-[#22302A] px-4 py-2.5 text-sm text-[#B7C3BC] transition hover:border-[#8CFF6B] hover:text-[#8CFF6B]"
+                className="self-end rounded-md border border-line px-4 py-2.5 text-sm text-soft transition hover:border-cyan hover:text-cyan"
               >
                 + Add vault B
               </button>
@@ -159,7 +159,7 @@ export default function BreedingPage() {
             <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
               <div>
                 <label
-                  className="mb-1 block text-xs uppercase tracking-wide text-[#7D8C84]"
+                  className="mb-1 block text-xs uppercase tracking-wide text-muted"
                   style={{ fontFamily: "'IBM Plex Mono', monospace" }}
                 >
                   Vault B — wallet address (for cross-breeding)
@@ -168,7 +168,7 @@ export default function BreedingPage() {
                   value={vaultBInput}
                   onChange={(e) => setVaultBInput(e.target.value)}
                   placeholder="0x5132ed842a01b4e28aef8f6df0df85762b9d2b8c"
-                  className="w-full rounded-md border border-[#22302A] bg-[#121815] px-4 py-2.5 text-[#E9F2ED] placeholder-[#54615A] outline-none focus:border-[#8CFF6B] focus-visible:ring-2 focus-visible:ring-[#8CFF6B]/40"
+                  className="w-full rounded-md border border-line bg-panel px-4 py-2.5 text-fg placeholder-faint outline-none focus:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/40"
                 />
               </div>
               <button
@@ -176,7 +176,7 @@ export default function BreedingPage() {
                   setShowVaultB(false);
                   setVaultBInput("");
                 }}
-                className="self-end rounded-md border border-[#22302A] px-4 py-2.5 text-sm text-[#7D8C84] transition hover:text-[#FF9E85]"
+                className="self-end rounded-md border border-line px-4 py-2.5 text-sm text-muted transition hover:text-bad"
               >
                 Remove
               </button>
@@ -186,21 +186,21 @@ export default function BreedingPage() {
           <button
             onClick={handleLoadVaults}
             disabled={loading}
-            className="rounded-md bg-[#8CFF6B] px-5 py-2.5 font-medium text-[#0B0F0E] transition hover:bg-[#a3ff86] disabled:opacity-50"
+            className="rounded-md bg-cyan px-5 py-2.5 font-medium text-ink transition hover:bg-[#6CF0FF] disabled:opacity-50"
           >
             {loading ? "Loading…" : showVaultB ? "Load both vaults" : "Load vault"}
           </button>
         </section>
 
         {loading && cores.length === 0 && (
-          <p className="mb-8 text-sm text-[#7D8C84]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+          <p className="mb-8 text-sm text-muted" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
             Pulling race history per core — this can take a moment for larger vaults, and
             longer still when loading two vaults (loaded one at a time to avoid rate limits).
           </p>
         )}
 
         {error && (
-          <div className="mb-8 rounded-md border border-[#4A2A22] bg-[#1A100D] px-4 py-3 text-sm text-[#FF9E85]">
+          <div className="mb-8 rounded-md border border-bad/30 bg-bad/10 px-4 py-3 text-sm text-bad">
             {error}
           </div>
         )}
@@ -212,11 +212,11 @@ export default function BreedingPage() {
                 <h2 className="text-lg font-semibold" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                   Browse cores
                 </h2>
-                <div className="flex overflow-hidden rounded-md border border-[#22302A]">
+                <div className="flex overflow-hidden rounded-md border border-line">
                   <button
                     onClick={() => setBrowserView("vault")}
                     className={`px-3 py-1.5 text-sm transition ${
-                      browserView === "vault" ? "bg-[#8CFF6B] text-[#0B0F0E]" : "text-[#B7C3BC] hover:bg-[#182018]"
+                      browserView === "vault" ? "bg-cyan text-ink" : "text-soft hover:bg-panel2"
                     }`}
                   >
                     All Vault Cores
@@ -224,7 +224,7 @@ export default function BreedingPage() {
                   <button
                     onClick={() => setBrowserView("stud")}
                     className={`px-3 py-1.5 text-sm transition ${
-                      browserView === "stud" ? "bg-[#8CFF6B] text-[#0B0F0E]" : "text-[#B7C3BC] hover:bg-[#182018]"
+                      browserView === "stud" ? "bg-cyan text-ink" : "text-soft hover:bg-panel2"
                     }`}
                   >
                     Stud Barn
@@ -234,10 +234,10 @@ export default function BreedingPage() {
               <CoreBrowserTable cores={cores} view={browserView} showVault={hasTwoVaults} />
             </section>
 
-            <section className="mb-8 flex flex-wrap items-end gap-4 border-b border-[#22302A] pb-6">
+            <section className="mb-8 flex flex-wrap items-end gap-4 border-b border-line pb-6">
               <div>
                 <label
-                  className="mb-1 block text-xs uppercase tracking-wide text-[#7D8C84]"
+                  className="mb-1 block text-xs uppercase tracking-wide text-muted"
                   style={{ fontFamily: "'IBM Plex Mono', monospace" }}
                 >
                   Strategy
@@ -245,7 +245,7 @@ export default function BreedingPage() {
                 <select
                   value={strategy}
                   onChange={(e) => setStrategy(e.target.value as BreedingStrategy)}
-                  className="rounded-md border border-[#22302A] bg-[#121815] px-3 py-2 text-[#E9F2ED] outline-none focus:border-[#8CFF6B]"
+                  className="rounded-md border border-line bg-panel px-3 py-2 text-fg outline-none focus:border-cyan"
                 >
                   <optgroup label="General">
                     {NON_DISTANCE_STRATEGIES.map((s) => (
@@ -266,7 +266,7 @@ export default function BreedingPage() {
 
               <div>
                 <label
-                  className="mb-1 block text-xs uppercase tracking-wide text-[#7D8C84]"
+                  className="mb-1 block text-xs uppercase tracking-wide text-muted"
                   style={{ fontFamily: "'IBM Plex Mono', monospace" }}
                 >
                   Element focus
@@ -274,7 +274,7 @@ export default function BreedingPage() {
                 <select
                   value={targetElement}
                   onChange={(e) => setTargetElement(e.target.value as Element | "")}
-                  className="rounded-md border border-[#22302A] bg-[#121815] px-3 py-2 text-[#E9F2ED] outline-none focus:border-[#8CFF6B]"
+                  className="rounded-md border border-line bg-panel px-3 py-2 text-fg outline-none focus:border-cyan"
                 >
                   <option value="">Any</option>
                   {elements.map((el) => (
@@ -287,7 +287,7 @@ export default function BreedingPage() {
 
               <div>
                 <label
-                  className="mb-1 block text-xs uppercase tracking-wide text-[#7D8C84]"
+                  className="mb-1 block text-xs uppercase tracking-wide text-muted"
                   style={{ fontFamily: "'IBM Plex Mono', monospace" }}
                 >
                   Min. avg power: {Math.round(minPower * 100)}%
@@ -299,17 +299,17 @@ export default function BreedingPage() {
                   step={0.05}
                   value={minPower}
                   onChange={(e) => setMinPower(Number(e.target.value))}
-                  className="w-40 accent-[#8CFF6B]"
+                  className="w-40 accent-cyan"
                 />
               </div>
 
               {hasTwoVaults && (
-                <label className="flex items-center gap-2 self-end pb-2 text-sm text-[#B7C3BC]">
+                <label className="flex items-center gap-2 self-end pb-2 text-sm text-soft">
                   <input
                     type="checkbox"
                     checked={crossVaultOnly}
                     onChange={(e) => setCrossVaultOnly(e.target.checked)}
-                    className="accent-[#8CFF6B]"
+                    className="accent-cyan"
                   />
                   Cross-vault pairs only
                 </label>
@@ -321,13 +321,13 @@ export default function BreedingPage() {
                 <h2 className="text-lg font-semibold" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                   {STRATEGY_LABELS[strategy]}
                 </h2>
-                <span className="text-sm text-[#7D8C84]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+                <span className="text-sm text-muted" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
                   {pairs.length} pair{pairs.length === 1 ? "" : "s"}
                 </span>
               </div>
 
               {strategy === "gamble" && (
-                <p className="mb-4 rounded-md border border-[#4A3A22] bg-[#1A140D] px-4 py-2 text-sm text-[#F2C879]">
+                <p className="mb-4 rounded-md border border-amber/30 bg-amber/10 px-4 py-2 text-sm text-amber">
                   Gamble breeding ignores distance specialization entirely — ranked on raw
                   power and genetic variance only.
                 </p>
@@ -337,20 +337,20 @@ export default function BreedingPage() {
                 {pairs.map((pair, i) => (
                   <li
                     key={`${pair.sire.hid}-${pair.dam.hid}`}
-                    className="rounded-lg border border-[#22302A] bg-[#121815] p-5"
+                    className="rounded-lg border border-line bg-panel p-5"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="text-sm text-[#7D8C84]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+                      <div className="text-sm text-muted" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
                         #{i + 1}
                       </div>
                       <div className="flex items-center gap-2 text-xs">
                         {pair.sameElement && (
-                          <span className="rounded-full border border-[#2E4A22] bg-[#182A12] px-2 py-0.5 text-[#8CFF6B]">
+                          <span className="rounded-full border border-mint/30 bg-mint/10 px-2 py-0.5 text-mint">
                             same element
                           </span>
                         )}
                         {pair.lineage.inbred && (
-                          <span className="rounded-full border border-[#4A2A22] bg-[#2A1610] px-2 py-0.5 text-[#FF9E85]">
+                          <span className="rounded-full border border-bad/30 bg-bad/10 px-2 py-0.5 text-bad">
                             {pair.lineage.relation === "parent-offspring"
                               ? "parent-offspring — blocked"
                               : pair.lineage.relation === "grandparent-grandchild"
@@ -359,19 +359,19 @@ export default function BreedingPage() {
                           </span>
                         )}
                         {pair.targetCategory && (
-                          <span className="rounded-full border border-[#22302A] bg-[#0E1512] px-2 py-0.5 text-[#B7C3BC]">
+                          <span className="rounded-full border border-line bg-panel px-2 py-0.5 text-soft">
                             {pair.targetCategory}
                           </span>
                         )}
                         {!pair.sire.inStud && (
-                          <span className="rounded-full border border-[#22302A] bg-[#0E1512] px-2 py-0.5 text-[#7D8C84]">
+                          <span className="rounded-full border border-line bg-panel px-2 py-0.5 text-muted">
                             sire not currently in stud
                           </span>
                         )}
                       </div>
                       <div className="ml-auto text-right" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
-                        <div className="text-2xl font-semibold text-[#8CFF6B]">{pair.score}</div>
-                        <div className="text-xs text-[#7D8C84]">score</div>
+                        <div className="text-2xl font-semibold text-cyan">{pair.score}</div>
+                        <div className="text-xs text-muted">score</div>
                       </div>
                     </div>
 
@@ -380,7 +380,7 @@ export default function BreedingPage() {
                       <ParentCard label="Dam" core={pair.dam} showVault={hasTwoVaults} />
                       <div>
                         <div
-                          className="mb-1 text-xs uppercase tracking-wide text-[#7D8C84]"
+                          className="mb-1 text-xs uppercase tracking-wide text-muted"
                           style={{ fontFamily: "'IBM Plex Mono', monospace" }}
                         >
                           Predicted offspring
@@ -392,19 +392,19 @@ export default function BreedingPage() {
                           className="mt-2 flex justify-between text-sm"
                           style={{ fontFamily: "'IBM Plex Mono', monospace" }}
                         >
-                          <span className="text-[#7D8C84]">Type</span>
-                          <span className="text-[#E9F2ED]">{pair.predictedOffspring.type ?? "unknown"}</span>
+                          <span className="text-muted">Type</span>
+                          <span className="text-fg">{pair.predictedOffspring.type ?? "unknown"}</span>
                         </div>
                       </div>
                     </div>
 
                     <div
-                      className="mt-4 flex flex-wrap gap-x-6 gap-y-1 border-t border-[#22302A] pt-3 text-sm text-[#B7C3BC]"
+                      className="mt-4 flex flex-wrap gap-x-6 gap-y-1 border-t border-line pt-3 text-sm text-soft"
                       style={{ fontFamily: "'IBM Plex Mono', monospace" }}
                     >
                       <span>Stud cost: {pair.cost === 0 ? "Free" : `$${pair.cost}`}</span>
                       <span>Est. value: ${pair.estimatedValueUsd}</span>
-                      <span className={pair.profitUsd >= 0 ? "text-[#8CFF6B]" : "text-[#FF9E85]"}>
+                      <span className={pair.profitUsd >= 0 ? "text-mint" : "text-bad"}>
                         Profit: {pair.profitUsd >= 0 ? "+" : ""}${pair.profitUsd}
                       </span>
                       {pair.roiPct !== null && <span>ROI: {pair.roiPct}%</span>}
@@ -414,7 +414,7 @@ export default function BreedingPage() {
               </ol>
 
               {pairs.length === 0 && (
-                <p className="text-[#7D8C84]">
+                <p className="text-muted">
                   No pairs match this strategy and filter combination — widen the element or
                   power filters, check that any cores are marked in-stud with splices
                   remaining this cycle, or turn off "Cross-vault pairs only" if it's on.
@@ -434,16 +434,16 @@ function CoreBrowserTable({ cores, view, showVault }: { cores: Core[]; view: "st
 
   if (sorted.length === 0) {
     return (
-      <p className="text-sm text-[#7D8C84]">
+      <p className="text-sm text-muted">
         {view === "stud" ? "No cores are currently marked in-stud." : "No cores loaded."}
       </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-[#22302A]">
+    <div className="overflow-x-auto rounded-lg border border-line">
       <table className="w-full text-left text-sm" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
-        <thead className="border-b border-[#22302A] bg-[#0E1512] text-xs uppercase tracking-wide text-[#7D8C84]">
+        <thead className="border-b border-line bg-panel text-xs uppercase tracking-wide text-muted">
           <tr>
             <th className="px-3 py-2">Core</th>
             <th className="px-3 py-2">Gender</th>
@@ -464,22 +464,22 @@ function CoreBrowserTable({ cores, view, showVault }: { cores: Core[]; view: "st
         </thead>
         <tbody>
           {sorted.map((c) => (
-            <tr key={c.hid} className="border-b border-[#182018] last:border-0">
-              <td className="px-3 py-2 text-[#E9F2ED]">
-                {c.name} <span className="text-[#7D8C84]">#{c.hid}</span>
+            <tr key={c.hid} className="border-b border-panel2 last:border-0">
+              <td className="px-3 py-2 text-fg">
+                {c.name} <span className="text-muted">#{c.hid}</span>
               </td>
-              <td className="px-3 py-2 text-[#B7C3BC]">{c.gender}</td>
-              <td className="px-3 py-2 text-[#B7C3BC]">{c.element}</td>
-              <td className="px-3 py-2 text-[#B7C3BC]">{c.type}</td>
-              <td className="px-3 py-2 text-[#B7C3BC]">{formatCategory(c)}</td>
-              <td className="px-3 py-2 text-[#8CFF6B]">{Math.round(c.power * 1000) / 10}%</td>
-              <td className="px-3 py-2 text-[#B7C3BC]">{Math.round(c.variance * 1000) / 10}%</td>
-              <td className="px-3 py-2 text-[#B7C3BC]">{Math.round(c.adjOdds * 1000) / 10}%</td>
-              {showVault && <td className="px-3 py-2 text-[#7D8C84]">{c.vaultName || c.vault}</td>}
+              <td className="px-3 py-2 text-soft">{c.gender}</td>
+              <td className="px-3 py-2 text-soft">{c.element}</td>
+              <td className="px-3 py-2 text-soft">{c.type}</td>
+              <td className="px-3 py-2 text-soft">{formatCategory(c)}</td>
+              <td className="px-3 py-2 text-cyan">{Math.round(c.power * 1000) / 10}%</td>
+              <td className="px-3 py-2 text-soft">{Math.round(c.variance * 1000) / 10}%</td>
+              <td className="px-3 py-2 text-soft">{Math.round(c.adjOdds * 1000) / 10}%</td>
+              {showVault && <td className="px-3 py-2 text-muted">{c.vaultName || c.vault}</td>}
               {view === "stud" && (
                 <>
-                  <td className="px-3 py-2 text-[#B7C3BC]">{c.priceUsd === 0 ? "Free" : `$${c.priceUsd}`}</td>
-                  <td className="px-3 py-2 text-[#B7C3BC]">{c.cycleSplicesRemaining}</td>
+                  <td className="px-3 py-2 text-soft">{c.priceUsd === 0 ? "Free" : `$${c.priceUsd}`}</td>
+                  <td className="px-3 py-2 text-soft">{c.cycleSplicesRemaining}</td>
                 </>
               )}
             </tr>
@@ -494,21 +494,21 @@ function ParentCard({ label, core, showVault }: { label: string; core: Core; sho
   return (
     <div>
       <div
-        className="mb-1 text-xs uppercase tracking-wide text-[#7D8C84]"
+        className="mb-1 text-xs uppercase tracking-wide text-muted"
         style={{ fontFamily: "'IBM Plex Mono', monospace" }}
       >
         {label} — {core.name} (#{core.hid})
       </div>
-      <div className="text-sm text-[#B7C3BC]">
+      <div className="text-sm text-soft">
         {core.element} · Core #{core.fno} · {core.type}
       </div>
       {showVault && (
-        <div className="text-xs text-[#7D8C84]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+        <div className="text-xs text-muted" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
           {core.vaultName || core.vault}
         </div>
       )}
       <div
-        className="mt-1 inline-block rounded-full border border-[#22302A] bg-[#0E1512] px-2 py-0.5 text-xs text-[#B7C3BC]"
+        className="mt-1 inline-block rounded-full border border-line bg-panel px-2 py-0.5 text-xs text-soft"
         title={DISTANCE_CATEGORY_LABELS[core.category]}
       >
         {formatCategory(core)}
@@ -532,8 +532,8 @@ function formatCategory(core: Core): string {
 function StatRow({ label, value, pct }: { label: string; value: number; pct?: boolean }) {
   const display = pct ? `${Math.round(value * 1000) / 10}%` : Math.round(value * 10) / 10;
   return (
-    <div className="flex justify-between text-sm text-[#E9F2ED]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
-      <span className="text-[#7D8C84]">{label}</span>
+    <div className="flex justify-between text-sm text-fg" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+      <span className="text-muted">{label}</span>
       <span>{display}</span>
     </div>
   );

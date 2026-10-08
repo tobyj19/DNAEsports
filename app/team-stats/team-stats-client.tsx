@@ -7,9 +7,9 @@ import type { TeamStatsResult, MapRecord } from "@/lib/teamStats";
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-lg border border-line bg-panel p-4">
-      <div className="text-xs text-[#9CA6B0] mb-1">{label}</div>
+      <div className="text-xs text-muted mb-1">{label}</div>
       <div className="text-2xl font-semibold">{value}</div>
-      {sub && <div className="text-xs text-[#9CA6B0] mt-1">{sub}</div>}
+      {sub && <div className="text-xs text-muted mt-1">{sub}</div>}
     </div>
   );
 }
@@ -21,21 +21,21 @@ function MapCard({ record, isBest, isWorst }: { record: MapRecord; isBest: boole
     <div className="rounded-lg border border-line bg-panel p-4">
       <div className="flex items-center justify-between mb-1">
         <span className="font-semibold">{record.map}</span>
-        <span className={record.wins >= record.losses ? "text-mint" : "text-red-400"}>
+        <span className={record.wins >= record.losses ? "text-mint" : "text-bad"}>
           {record.wins}-{record.losses}
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-line overflow-hidden mb-2">
         <div className="h-full bg-mint" style={{ width: `${fillPct}%` }} />
       </div>
-      <div className="flex items-center justify-between text-xs text-[#9CA6B0]">
+      <div className="flex items-center justify-between text-xs text-muted">
         <span>
           {record.runs} runs · {record.racesFor}/{record.racesAgainst}
         </span>
         <span>{(record.winPct * 100).toFixed(0)}%</span>
       </div>
       {(isBest || isWorst) && (
-        <div className={`text-[10px] mt-1 ${isBest ? "text-mint" : "text-red-400"}`}>
+        <div className={`text-[10px] mt-1 ${isBest ? "text-mint" : "text-bad"}`}>
           {isBest ? "best" : "worst"}
         </div>
       )}
@@ -89,7 +89,7 @@ export default function TeamStatsClient({ teams, seasons }: { teams: Team[]; sea
     <div>
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end mb-6">
         <div>
-          <label className="block text-xs text-[#9CA6B0] mb-1">Team</label>
+          <label className="block text-xs text-muted mb-1">Team</label>
           <select
             value={teamId}
             onChange={(e) => handleTeamChange(e.target.value)}
@@ -110,7 +110,7 @@ export default function TeamStatsClient({ teams, seasons }: { teams: Team[]; sea
           <button
             onClick={() => handleSeasonChange("overall")}
             className={`px-3 py-1.5 rounded text-sm border ${
-              season === "overall" ? "bg-mint text-ink border-mint" : "border-line hover:bg-panel"
+              season === "overall" ? "bg-cyan text-ink border-cyan" : "border-line hover:bg-panel"
             }`}
           >
             Overall
@@ -120,7 +120,7 @@ export default function TeamStatsClient({ teams, seasons }: { teams: Team[]; sea
               key={s.season_id}
               onClick={() => handleSeasonChange(s.season_id)}
               className={`px-3 py-1.5 rounded text-sm border flex items-center gap-1.5 ${
-                season === s.season_id ? "bg-mint text-ink border-mint" : "border-line hover:bg-panel"
+                season === s.season_id ? "bg-cyan text-ink border-cyan" : "border-line hover:bg-panel"
               }`}
             >
               {s.short}
@@ -130,10 +130,10 @@ export default function TeamStatsClient({ teams, seasons }: { teams: Team[]; sea
         </div>
       )}
 
-      {loading && <p className="text-[#9CA6B0]">Loading…</p>}
+      {loading && <p className="text-muted">Loading…</p>}
       {error && (
         <div className="mb-6">
-          <p className="text-red-400 mb-2">{error}</p>
+          <p className="text-bad mb-2">{error}</p>
           <button
             onClick={() => load(teamId, season)}
             className="px-3 py-1.5 rounded border border-line text-sm hover:bg-panel transition-colors"
@@ -169,17 +169,17 @@ export default function TeamStatsClient({ teams, seasons }: { teams: Team[]; sea
           )}
 
           <div className="flex items-center justify-between mb-3 mt-6">
-            <h2 className="text-sm font-medium text-[#9CA6B0]">BY MAP</h2>
+            <h2 className="text-sm font-medium text-muted">BY MAP</h2>
             {bestMap && worstMap && bestMap.map !== worstMap.map && (
-              <span className="text-xs text-[#9CA6B0]">
+              <span className="text-xs text-muted">
                 best <span className="text-mint">{bestMap.map}</span> · worst{" "}
-                <span className="text-red-400">{worstMap.map}</span>
+                <span className="text-bad">{worstMap.map}</span>
               </span>
             )}
           </div>
 
           {stats.mapRecords.length === 0 ? (
-            <p className="text-[#9CA6B0] text-sm">No finished matches in this season yet.</p>
+            <p className="text-muted text-sm">No finished matches in this season yet.</p>
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {stats.mapRecords.map((m) => (
@@ -193,7 +193,7 @@ export default function TeamStatsClient({ teams, seasons }: { teams: Team[]; sea
             </div>
           )}
 
-          <p className="text-xs text-[#9CA6B0] mt-3">
+          <p className="text-xs text-muted mt-3">
             every match played · {stats.totalRuns} runs across {stats.totalMatches} matches
           </p>
         </div>

@@ -16,12 +16,12 @@ import {
 import type { TeamProfile } from "@/lib/coreProfile";
 import { teamDistanceStrength, ESPORTS_DISTANCES } from "@/lib/coreProfile";
 
-const TEAM_A_COLOR = "#4ADE80"; // mint
-const TEAM_B_COLOR = "#F5A623"; // amber
+const TEAM_A_COLOR = "#22E5FF"; // brand cyan
+const TEAM_B_COLOR = "#FF2BD6"; // brand magenta
 
 const tooltipStyle = {
-  backgroundColor: "#12161C",
-  border: "1px solid #232A33",
+  backgroundColor: "#0B111A",
+  border: "1px solid #1B2533",
   borderRadius: 6,
   fontSize: 13,
 };
@@ -41,9 +41,9 @@ export function SummaryBarChart({ a, b }: { a: TeamProfile; b: TeamProfile }) {
   return (
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} margin={{ top: 8, right: 16, left: -16, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#232A33" />
-        <XAxis dataKey="metric" stroke="#9CA6B0" fontSize={13} />
-        <YAxis stroke="#9CA6B0" fontSize={13} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#1B2533" />
+        <XAxis dataKey="metric" stroke="#8B9BB0" fontSize={13} />
+        <YAxis stroke="#8B9BB0" fontSize={13} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
         <Tooltip contentStyle={tooltipStyle} formatter={(v) => `${Number(v).toFixed(1)}%`} />
         <Legend wrapperStyle={{ fontSize: 13 }} />
         <Bar dataKey={a.teamName} fill={TEAM_A_COLOR} radius={[4, 4, 0, 0]} />
@@ -72,9 +72,9 @@ export function DistanceStrengthChart({ a, b }: { a: TeamProfile; b: TeamProfile
   return (
     <ResponsiveContainer width="100%" height={280}>
       <BarChart data={data} margin={{ top: 8, right: 16, left: -16, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#232A33" />
-        <XAxis dataKey="distance" stroke="#9CA6B0" fontSize={13} />
-        <YAxis stroke="#9CA6B0" fontSize={13} tickFormatter={(v) => `${v}%`} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#1B2533" />
+        <XAxis dataKey="distance" stroke="#8B9BB0" fontSize={13} />
+        <YAxis stroke="#8B9BB0" fontSize={13} tickFormatter={(v) => `${v}%`} />
         <Tooltip contentStyle={tooltipStyle} formatter={(v) => `${Number(v).toFixed(1)}% win rate`} />
         <Legend wrapperStyle={{ fontSize: 13 }} />
         <Bar dataKey={a.teamName} fill={TEAM_A_COLOR} radius={[4, 4, 0, 0]} />
@@ -95,26 +95,26 @@ export function PowerVarianceScatter({ a, b }: { a: TeamProfile; b: TeamProfile 
   return (
     <ResponsiveContainer width="100%" height={320}>
       <ScatterChart margin={{ top: 8, right: 16, left: -16, bottom: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#232A33" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#1B2533" />
         <XAxis
           type="number"
           dataKey="x"
           name="Power"
           domain={[0, 100]}
-          stroke="#9CA6B0"
+          stroke="#8B9BB0"
           fontSize={13}
           tickFormatter={(v) => `${v}%`}
-          label={{ value: "Power", position: "insideBottom", offset: -4, fill: "#9CA6B0", fontSize: 12 }}
+          label={{ value: "Power", position: "insideBottom", offset: -4, fill: "#8B9BB0", fontSize: 12 }}
         />
         <YAxis
           type="number"
           dataKey="y"
           name="Variance"
           domain={[0, 100]}
-          stroke="#9CA6B0"
+          stroke="#8B9BB0"
           fontSize={13}
           tickFormatter={(v) => `${v}%`}
-          label={{ value: "Variance", angle: -90, position: "insideLeft", fill: "#9CA6B0", fontSize: 12 }}
+          label={{ value: "Variance", angle: -90, position: "insideLeft", fill: "#8B9BB0", fontSize: 12 }}
         />
         <ZAxis type="number" dataKey="z" range={[60, 60]} />
         <Tooltip
@@ -126,7 +126,7 @@ export function PowerVarianceScatter({ a, b }: { a: TeamProfile; b: TeamProfile 
             return (
               <div style={tooltipStyle} className="px-3 py-2">
                 <div className="font-medium">{p.name}</div>
-                <div className="text-xs text-[#9CA6B0]">
+                <div className="text-xs text-muted">
                   Power {p.x.toFixed(0)}% · Variance {p.y.toFixed(0)}%
                 </div>
               </div>

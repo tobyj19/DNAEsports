@@ -19,12 +19,12 @@ export default function HomePage() {
   return (
     <div className="py-6">
       <div className="relative mb-10 flex flex-col items-center text-center">
-        <div className="pointer-events-none absolute left-1/2 top-4 h-40 w-[30rem] max-w-full -translate-x-1/2 rounded-full bg-[#22E5FF]/10 blur-3xl" />
+        <div className="pointer-events-none absolute left-1/2 top-4 h-40 w-[30rem] max-w-full -translate-x-1/2 rounded-full bg-cyan/10 blur-3xl" />
         <h1 className="relative">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/logo-primary.svg" alt="DNA Analytics" className="h-auto w-[22rem] max-w-full sm:w-[28rem]" />
         </h1>
-        <p className="relative mt-4 text-[#9CA6B0]">Data tools for DNA Racing — pick where you want to go.</p>
+        <p className="relative mt-4 text-muted">Data tools for DNA Racing — pick where you want to go.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -67,7 +67,7 @@ function SectionCard({
   return (
     <section
       className="relative overflow-hidden rounded-2xl border border-white/[0.08] p-6"
-      style={{ background: `linear-gradient(145deg, ${accent}1f 0%, rgba(18,22,28,0.95) 45%, #0B0D10 100%)` }}
+      style={{ background: `linear-gradient(145deg, ${accent}1f 0%, rgba(11,17,26,0.95) 45%, #05070D 100%)` }}
     >
       <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full blur-3xl opacity-30" style={{ background: accent }} />
       <div className="relative">
@@ -93,7 +93,7 @@ function SectionCard({
               className="group rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2.5 transition-colors hover:border-white/20 hover:bg-white/[0.04]"
             >
               <div className="text-sm font-semibold group-hover:text-white">{l.label}</div>
-              <div className="text-xs text-[#9CA6B0]">{l.desc}</div>
+              <div className="text-xs text-muted">{l.desc}</div>
             </Link>
           ))}
         </div>

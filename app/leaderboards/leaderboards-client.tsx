@@ -19,7 +19,7 @@ export default function LeaderboardsClient() {
               key={s}
               onClick={() => setScope(s)}
               className={`px-4 py-2 text-sm ${
-                scope === s ? "bg-mint text-ink" : "hover:bg-panel"
+                scope === s ? "bg-cyan text-ink" : "hover:bg-panel"
               }`}
             >
               {SNAPSHOT_META[s].label}
@@ -39,14 +39,14 @@ export default function LeaderboardsClient() {
         </select>
       </div>
 
-      <p className="text-xs text-[#9CA6B0] mb-4">
+      <p className="text-xs text-muted mb-4">
         {meta.description} Snapshot captured {meta.capturedAt}.
       </p>
 
       <div className="overflow-x-auto rounded-lg border border-line">
         <table className="text-sm w-full">
           <thead>
-            <tr className="bg-panel text-left text-[#9CA6B0]">
+            <tr className="bg-panel text-left text-muted">
               <th className="px-3 py-2 font-medium">#</th>
               <th className="px-3 py-2 font-medium">Core</th>
               <th className="px-3 py-2 font-medium">Team</th>
@@ -63,20 +63,20 @@ export default function LeaderboardsClient() {
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-4 py-6 text-center text-[#9CA6B0]">
+                <td colSpan={11} className="px-4 py-6 text-center text-muted">
                   No qualifying cores at this distance in this snapshot.
                 </td>
               </tr>
             )}
             {rows.map((r, i) => (
               <tr key={r.hid} className={`border-t border-line ${i < 3 ? "bg-panel/60" : ""}`}>
-                <td className={`px-3 py-2 ${i < 3 ? "text-amber font-semibold" : "text-[#9CA6B0]"}`}>{i + 1}</td>
+                <td className={`px-3 py-2 ${i < 3 ? "text-amber font-semibold" : "text-muted"}`}>{i + 1}</td>
                 <td className="px-3 py-2">
                   <div className="font-medium">{r.name}</div>
-                  <div className="text-xs text-[#9CA6B0]">#{r.hid}</div>
+                  <div className="text-xs text-muted">#{r.hid}</div>
                 </td>
-                <td className="px-3 py-2 text-xs text-[#9CA6B0]">{r.team || "—"}</td>
-                <td className="px-3 py-2 text-xs text-[#9CA6B0] capitalize">
+                <td className="px-3 py-2 text-xs text-muted">{r.team || "—"}</td>
+                <td className="px-3 py-2 text-xs text-muted capitalize">
                   {r.element}/{r.type}
                 </td>
                 <td className="px-3 py-2">{r.races}</td>

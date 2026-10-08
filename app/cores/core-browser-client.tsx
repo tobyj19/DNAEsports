@@ -8,6 +8,7 @@ import { getLeaderboard, SNAPSHOT_META } from "@/lib/leaderboardData";
 import DistancePanel from "./distance-panel";
 
 const MAX_RESULTS = 150;
+const PAGE_SIZE = 25; // rows rendered before "Show more" — keeps the list from needing its own scroll box
 const ESPORTS_DISTANCES = [1000, 1200, 1400, 1600, 1800, 2000, 2200];
 
 interface SpeedRankRow {
@@ -54,6 +55,8 @@ export default function CoreBrowserClient({ cores }: { cores: BrowsableCore[] })
   }, [cores, query, teamFilter, elementFilter]);
 
   const shown = filtered.slice(0, MAX_RESULTS);
+  const [visible, setVisible] = useState(PAGE_SIZE);
+  const listLength = speedRanking ? speedRanking.length : shown.length;
 
   function updateQuery(v: string) {
     setQuery(v);
@@ -213,7 +216,7 @@ export default function CoreBrowserClient({ cores }: { cores: BrowsableCore[] })
           <button
             onClick={rankBySpeed}
             disabled={rankingLoading || shown.length === 0}
-            className="px-4 py-2 rounded bg-mint text-ink text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded bg-cyan text-ink text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {rankingLoading
               ? "Ranking…"
@@ -229,7 +232,7 @@ export default function CoreBrowserClient({ cores }: { cores: BrowsableCore[] })
                 setSpeedRanking(null);
                 setRankingSource(null);
               }}
-              className="text-xs text-[#9CA6B0] hover:text-white"
+              className="text-xs text-muted hover:text-white"
             >
               Clear ranking
             </button>
@@ -237,14 +240,14 @@ export default function CoreBrowserClient({ cores }: { cores: BrowsableCore[] })
         </div>
 
         {rankingLoading && (
-          <p className="text-xs text-[#9CA6B0] mb-2">
+          <p className="text-xs text-muted mb-2">
             Pulling race history for {shown.length} cores — this can take up to a minute for larger lists.
           </p>
         )}
         {rankingError && (
           <div className="mb-2">
-            <p className="text-red-400 text-sm mb-1">{rankingError}</p>
-            <button onClick={rankBySpeed} className="text-xs underline text-[#9CA6B0] hover:text-white">
+            <p className="text-bad text-sm mb-1">{rankingError}</p>
+            <button onClick={rankBySpeed} className="text-xs underline text-muted hover:text-white">
               Retry
             </button>
           </div>
@@ -257,19 +260,19 @@ export default function CoreBrowserClient({ cores }: { cores: BrowsableCore[] })
           </p>
         )}
         {speedRanking && rankingSource === "live" && (
-          <p className="text-xs text-[#9CA6B0] mb-2">Live-ranked just now from current race history.</p>
+          <p className="text-xs text-muted mb-2">Live-ranked just now from current race history.</p>
         )}
 
-        <p className="text-xs text-[#9CA6B0] mb-2">
+        <p className="text-xs text-muted mb-2">
           {filtered.length} match{filtered.length === 1 ? "" : "es"}
           {filtered.length > MAX_RESULTS ? ` — showing first ${MAX_RESULTS}, refine your search` : ""}
         </p>
 
-        <div className="rounded-lg border border-line overflow-hidden max-h-[36rem] overflow-y-auto">
-          {shown.length === 0 && <div className="px-4 py-6 text-center text-[#9CA6B0] text-sm">No cores match.</div>}
+        <div className="rounded-lg border border-line overflow-hidden">
+          {shown.length === 0 && <div className="px-4 py-6 text-center text-muted text-sm">No cores match.</div>}
           <div className="divide-y divide-line">
             {speedRanking
-              ? speedRanking.map((r, i) => {
+              ? speedRanking.slice(0, visible).map((r, i) => {
                   const core = cores.find((c) => c.hid === r.hid);
                   return (
                     <button
@@ -281,21 +284,21 @@ export default function CoreBrowserClient({ cores }: { cores: BrowsableCore[] })
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium">
-                          {r.speedMps != null && <span className="text-[#9CA6B0] mr-2">#{i + 1}</span>}
+                          {r.speedMps != null && <span className="text-muted mr-2">#{i + 1}</span>}
                           {r.name}
                         </span>
-                        <span className="text-xs text-[#9CA6B0]">
+                        <span className="text-xs text-muted">
                           {r.speedMps != null ? `${r.speedMps.toFixed(1)} m/s` : "no data"}
                         </span>
                       </div>
-                      <div className="text-xs text-[#9CA6B0] capitalize">
+                      <div className="text-xs text-muted capitalize">
                         {r.element}/{r.type} · {core?.teamName ?? ""}
                         {r.avgTimeSec != null ? ` · ${r.avgTimeSec.toFixed(1)}s avg (${r.races} races)` : ""}
                       </div>
                     </button>
                   );
                 })
-              : shown.map((c) => (
+              : shown.slice(0, visible).map((c) => (
                   <button
                     key={c.hid}
                     onClick={() => selectCore(c)}
@@ -305,30 +308,38 @@ export default function CoreBrowserClient({ cores }: { cores: BrowsableCore[] })
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{c.name}</span>
-                      <span className="text-xs text-[#9CA6B0]">#{c.hid}</span>
+                      <span className="text-xs text-muted">#{c.hid}</span>
                     </div>
-                    <div className="text-xs text-[#9CA6B0] capitalize">
+                    <div className="text-xs text-muted capitalize">
                       {c.element}/{c.type} · {c.teamName} ({c.teamGroup})
                     </div>
                   </button>
                 ))}
           </div>
+          {listLength > visible && (
+            <button
+              onClick={() => setVisible((v) => v + PAGE_SIZE * 2)}
+              className="w-full border-t border-line py-2.5 text-sm text-muted hover:bg-panel hover:text-white"
+            >
+              Show more ({listLength - visible} left)
+            </button>
+          )}
         </div>
       </div>
 
       <div className="rounded-lg border border-line bg-panel p-4 min-h-[16rem] lg:sticky lg:top-4 self-start">
-        {!selected && <p className="text-[#9CA6B0] text-sm">Select a core to see its full profile.</p>}
+        {!selected && <p className="text-muted text-sm">Select a core to see its full profile.</p>}
         {selected && (
           <div>
             <h2 className="text-lg font-semibold mb-1">{selected.name}</h2>
-            <p className="text-sm text-[#9CA6B0] mb-4 capitalize">
+            <p className="text-sm text-muted mb-4 capitalize">
               #{selected.hid} · {selected.element}/{selected.type} · {selected.teamName}
             </p>
 
-            {loadingDetail && <p className="text-[#9CA6B0] text-sm">Loading profile…</p>}
+            {loadingDetail && <p className="text-muted text-sm">Loading profile…</p>}
             {detailError && (
               <div>
-                <p className="text-red-400 text-sm mb-2">{detailError}</p>
+                <p className="text-bad text-sm mb-2">{detailError}</p>
                 <button
                   onClick={() => selectCore(selected)}
                   className="px-3 py-1.5 rounded border border-line text-sm hover:bg-ink transition-colors"
@@ -342,31 +353,31 @@ export default function CoreBrowserClient({ cores }: { cores: BrowsableCore[] })
               <div>
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   <div>
-                    <div className="text-xs text-[#9CA6B0]">Power</div>
+                    <div className="text-xs text-muted">Power</div>
                     <div className="text-xl font-semibold">
                       {detail.powerPct != null ? `${detail.powerPct.toFixed(0)}%` : "—"}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-[#9CA6B0]">Variance</div>
+                    <div className="text-xs text-muted">Variance</div>
                     <div className="text-xl font-semibold">
                       {detail.variancePct != null ? `${detail.variancePct.toFixed(0)}%` : "—"}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-[#9CA6B0]">AdjOdds</div>
+                    <div className="text-xs text-muted">AdjOdds</div>
                     <div className="text-xl font-semibold">
                       {detail.adjOddsPct != null ? `${detail.adjOddsPct.toFixed(0)}%` : "—"}
                     </div>
                   </div>
                 </div>
                 {detail.racesN != null && (
-                  <p className="text-xs text-[#9CA6B0] mb-4">{detail.racesN} races on record</p>
+                  <p className="text-xs text-muted mb-4">{detail.racesN} races on record</p>
                 )}
 
-                <h3 className="text-sm font-medium text-[#9CA6B0] mb-2">By distance</h3>
+                <h3 className="text-sm font-medium text-muted mb-2">By distance</h3>
                 {detail.allDistances.length === 0 ? (
-                  <p className="text-sm text-[#9CA6B0]">No esports-distance race history yet.</p>
+                  <p className="text-sm text-muted">No esports-distance race history yet.</p>
                 ) : (
                   <div>
                     {detail.allDistances.map((d) => (

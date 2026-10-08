@@ -89,7 +89,7 @@ export default function ArenaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0F0E] text-[#E9F2ED]">
+    <div className="min-h-screen bg-ink text-fg">
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link
         href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
@@ -97,8 +97,8 @@ export default function ArenaPage() {
       />
 
       <div className="mx-auto max-w-6xl px-6 py-10 sm:px-10">
-        <header className="mb-10 border-b border-[#22302A] pb-6">
-          <p className="text-sm text-[#7D8C84]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+        <header className="mb-10 border-b border-line pb-6">
+          <p className="text-sm text-muted" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
             DNA-Esports / Strategy
           </p>
           <h1
@@ -107,11 +107,11 @@ export default function ArenaPage() {
           >
             Splice Arena
           </h1>
-          <p className="mt-2 max-w-2xl text-[#B7C3BC]">
+          <p className="mt-2 max-w-2xl text-soft">
             Real, actionable pairings between your vault and cores currently listed in the
             public Splice Arena — every result here is something you could actually splice
             today. For hypothetical "what if" analysis regardless of stud status, see{" "}
-            <a href="/breeding" className="text-[#8CFF6B] underline">
+            <a href="/breeding" className="text-cyan underline">
               Breeding Analysis
             </a>
             .
@@ -121,7 +121,7 @@ export default function ArenaPage() {
         <section className="mb-8 grid gap-4 sm:grid-cols-[1fr_auto]">
           <div>
             <label
-              className="mb-1 block text-xs uppercase tracking-wide text-[#7D8C84]"
+              className="mb-1 block text-xs uppercase tracking-wide text-muted"
               style={{ fontFamily: "'IBM Plex Mono', monospace" }}
             >
               Your vault — wallet address
@@ -130,52 +130,52 @@ export default function ArenaPage() {
               value={vaultInput}
               onChange={(e) => setVaultInput(e.target.value)}
               placeholder="0xaf1320faa9a484a4702ec16ffec18260cc42c3c2"
-              className="w-full rounded-md border border-[#22302A] bg-[#121815] px-4 py-2.5 text-[#E9F2ED] placeholder-[#54615A] outline-none focus:border-[#8CFF6B] focus-visible:ring-2 focus-visible:ring-[#8CFF6B]/40"
+              className="w-full rounded-md border border-line bg-panel px-4 py-2.5 text-fg placeholder-faint outline-none focus:border-cyan focus-visible:ring-2 focus-visible:ring-cyan/40"
             />
           </div>
           <button
             onClick={handleLoad}
             disabled={loading}
-            className="self-end rounded-md bg-[#8CFF6B] px-5 py-2.5 font-medium text-[#0B0F0E] transition hover:bg-[#a3ff86] disabled:opacity-50"
+            className="self-end rounded-md bg-cyan px-5 py-2.5 font-medium text-ink transition hover:bg-[#6CF0FF] disabled:opacity-50"
           >
             {loading ? "Loading…" : "Load vault + arena"}
           </button>
         </section>
 
         {loading && myCores.length === 0 && (
-          <p className="mb-8 text-sm text-[#7D8C84]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+          <p className="mb-8 text-sm text-muted" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
             Loading your vault, then the arena listing — each core's race history is fetched
             individually, so a full arena load can take a little while.
           </p>
         )}
 
         {error && (
-          <div className="mb-8 rounded-md border border-[#4A2A22] bg-[#1A100D] px-4 py-3 text-sm text-[#FF9E85]">
+          <div className="mb-8 rounded-md border border-bad/30 bg-bad/10 px-4 py-3 text-sm text-bad">
             {error}
           </div>
         )}
 
         {myCores.length > 0 && arenaCores.length > 0 && (
           <>
-            <section className="mb-8 flex flex-wrap items-center gap-6 border-b border-[#22302A] pb-6">
+            <section className="mb-8 flex flex-wrap items-center gap-6 border-b border-line pb-6">
               <div
-                className="text-sm text-[#B7C3BC]"
+                className="text-sm text-soft"
                 style={{ fontFamily: "'IBM Plex Mono', monospace" }}
               >
                 Your vault: {myCores.length} cores
               </div>
               <div
-                className="text-sm text-[#B7C3BC]"
+                className="text-sm text-soft"
                 style={{ fontFamily: "'IBM Plex Mono', monospace" }}
               >
                 Arena: {arenaCores.length} listed
               </div>
             </section>
 
-            <section className="mb-8 flex flex-wrap items-end gap-4 border-b border-[#22302A] pb-6">
+            <section className="mb-8 flex flex-wrap items-end gap-4 border-b border-line pb-6">
               <div>
                 <label
-                  className="mb-1 block text-xs uppercase tracking-wide text-[#7D8C84]"
+                  className="mb-1 block text-xs uppercase tracking-wide text-muted"
                   style={{ fontFamily: "'IBM Plex Mono', monospace" }}
                 >
                   Strategy
@@ -183,7 +183,7 @@ export default function ArenaPage() {
                 <select
                   value={strategy}
                   onChange={(e) => setStrategy(e.target.value as BreedingStrategy)}
-                  className="rounded-md border border-[#22302A] bg-[#121815] px-3 py-2 text-[#E9F2ED] outline-none focus:border-[#8CFF6B]"
+                  className="rounded-md border border-line bg-panel px-3 py-2 text-fg outline-none focus:border-cyan"
                 >
                   <optgroup label="General">
                     {NON_DISTANCE_STRATEGIES.map((s) => (
@@ -204,7 +204,7 @@ export default function ArenaPage() {
 
               <div>
                 <label
-                  className="mb-1 block text-xs uppercase tracking-wide text-[#7D8C84]"
+                  className="mb-1 block text-xs uppercase tracking-wide text-muted"
                   style={{ fontFamily: "'IBM Plex Mono', monospace" }}
                 >
                   Element focus
@@ -212,7 +212,7 @@ export default function ArenaPage() {
                 <select
                   value={targetElement}
                   onChange={(e) => setTargetElement(e.target.value as Element | "")}
-                  className="rounded-md border border-[#22302A] bg-[#121815] px-3 py-2 text-[#E9F2ED] outline-none focus:border-[#8CFF6B]"
+                  className="rounded-md border border-line bg-panel px-3 py-2 text-fg outline-none focus:border-cyan"
                 >
                   <option value="">Any</option>
                   {elements.map((el) => (
@@ -225,7 +225,7 @@ export default function ArenaPage() {
 
               <div>
                 <label
-                  className="mb-1 block text-xs uppercase tracking-wide text-[#7D8C84]"
+                  className="mb-1 block text-xs uppercase tracking-wide text-muted"
                   style={{ fontFamily: "'IBM Plex Mono', monospace" }}
                 >
                   Min. avg power: {Math.round(minPower * 100)}%
@@ -237,7 +237,7 @@ export default function ArenaPage() {
                   step={0.05}
                   value={minPower}
                   onChange={(e) => setMinPower(Number(e.target.value))}
-                  className="w-40 accent-[#8CFF6B]"
+                  className="w-40 accent-cyan"
                 />
               </div>
             </section>
@@ -247,7 +247,7 @@ export default function ArenaPage() {
                 <h2 className="text-lg font-semibold" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                   {STRATEGY_LABELS[strategy]}
                 </h2>
-                <span className="text-sm text-[#7D8C84]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+                <span className="text-sm text-muted" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
                   {pairs.length} pair{pairs.length === 1 ? "" : "s"}
                 </span>
               </div>
@@ -256,20 +256,20 @@ export default function ArenaPage() {
                 {pairs.map((pair, i) => (
                   <li
                     key={`${pair.sire.hid}-${pair.dam.hid}`}
-                    className="rounded-lg border border-[#22302A] bg-[#121815] p-5"
+                    className="rounded-lg border border-line bg-panel p-5"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="text-sm text-[#7D8C84]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+                      <div className="text-sm text-muted" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
                         #{i + 1}
                       </div>
                       <div className="flex items-center gap-2 text-xs">
                         {pair.sameElement && (
-                          <span className="rounded-full border border-[#2E4A22] bg-[#182A12] px-2 py-0.5 text-[#8CFF6B]">
+                          <span className="rounded-full border border-mint/30 bg-mint/10 px-2 py-0.5 text-mint">
                             same element
                           </span>
                         )}
                         {pair.lineage.inbred && (
-                          <span className="rounded-full border border-[#4A2A22] bg-[#2A1610] px-2 py-0.5 text-[#FF9E85]">
+                          <span className="rounded-full border border-bad/30 bg-bad/10 px-2 py-0.5 text-bad">
                             {pair.lineage.relation === "parent-offspring"
                               ? "parent-offspring — blocked"
                               : pair.lineage.relation === "grandparent-grandchild"
@@ -278,14 +278,14 @@ export default function ArenaPage() {
                           </span>
                         )}
                         {pair.targetCategory && (
-                          <span className="rounded-full border border-[#22302A] bg-[#0E1512] px-2 py-0.5 text-[#B7C3BC]">
+                          <span className="rounded-full border border-line bg-panel px-2 py-0.5 text-soft">
                             {pair.targetCategory}
                           </span>
                         )}
                       </div>
                       <div className="ml-auto text-right" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
-                        <div className="text-2xl font-semibold text-[#8CFF6B]">{pair.score}</div>
-                        <div className="text-xs text-[#7D8C84]">score</div>
+                        <div className="text-2xl font-semibold text-cyan">{pair.score}</div>
+                        <div className="text-xs text-muted">score</div>
                       </div>
                     </div>
 
@@ -294,7 +294,7 @@ export default function ArenaPage() {
                       <ArenaParentCard label="Dam" core={pair.dam} mine={myCores} />
                       <div>
                         <div
-                          className="mb-1 text-xs uppercase tracking-wide text-[#7D8C84]"
+                          className="mb-1 text-xs uppercase tracking-wide text-muted"
                           style={{ fontFamily: "'IBM Plex Mono', monospace" }}
                         >
                           Predicted offspring
@@ -306,19 +306,19 @@ export default function ArenaPage() {
                           className="mt-2 flex justify-between text-sm"
                           style={{ fontFamily: "'IBM Plex Mono', monospace" }}
                         >
-                          <span className="text-[#7D8C84]">Type</span>
-                          <span className="text-[#E9F2ED]">{pair.predictedOffspring.type ?? "unknown"}</span>
+                          <span className="text-muted">Type</span>
+                          <span className="text-fg">{pair.predictedOffspring.type ?? "unknown"}</span>
                         </div>
                       </div>
                     </div>
 
                     <div
-                      className="mt-4 flex flex-wrap gap-x-6 gap-y-1 border-t border-[#22302A] pt-3 text-sm text-[#B7C3BC]"
+                      className="mt-4 flex flex-wrap gap-x-6 gap-y-1 border-t border-line pt-3 text-sm text-soft"
                       style={{ fontFamily: "'IBM Plex Mono', monospace" }}
                     >
                       <span>Stud cost: {pair.cost === 0 ? "Free" : `$${pair.cost}`}</span>
                       <span>Est. value: ${pair.estimatedValueUsd}</span>
-                      <span className={pair.profitUsd >= 0 ? "text-[#8CFF6B]" : "text-[#FF9E85]"}>
+                      <span className={pair.profitUsd >= 0 ? "text-mint" : "text-bad"}>
                         Profit: {pair.profitUsd >= 0 ? "+" : ""}${pair.profitUsd}
                       </span>
                       {pair.roiPct !== null && <span>ROI: {pair.roiPct}%</span>}
@@ -328,7 +328,7 @@ export default function ArenaPage() {
               </ol>
 
               {pairs.length === 0 && (
-                <p className="text-[#7D8C84]">
+                <p className="text-muted">
                   No real, actionable pairs match this strategy and filter combination right
                   now — try widening the element or power filters. (Every result here requires
                   an actual in-stud sire, so the arena's current listings limit what's
@@ -348,26 +348,26 @@ function ArenaParentCard({ label, core, mine }: { label: string; core: Core; min
   return (
     <div>
       <div
-        className="mb-1 text-xs uppercase tracking-wide text-[#7D8C84]"
+        className="mb-1 text-xs uppercase tracking-wide text-muted"
         style={{ fontFamily: "'IBM Plex Mono', monospace" }}
       >
         {label} — {core.name} (#{core.hid})
       </div>
-      <div className="text-sm text-[#B7C3BC]">
+      <div className="text-sm text-soft">
         {core.element} · Core #{core.fno} · {core.type}
       </div>
       <div className="mt-1 flex flex-wrap gap-1">
         <span
           className={`inline-block rounded-full border px-2 py-0.5 text-xs ${
             isMine
-              ? "border-[#2E4A22] bg-[#182A12] text-[#8CFF6B]"
-              : "border-[#22302A] bg-[#0E1512] text-[#B7C3BC]"
+              ? "border-mint/30 bg-mint/10 text-mint"
+              : "border-line bg-panel text-soft"
           }`}
         >
           {isMine ? "your vault" : "arena"}
         </span>
         <span
-          className="inline-block rounded-full border border-[#22302A] bg-[#0E1512] px-2 py-0.5 text-xs text-[#B7C3BC]"
+          className="inline-block rounded-full border border-line bg-panel px-2 py-0.5 text-xs text-soft"
           title={DISTANCE_CATEGORY_LABELS[core.category]}
         >
           {core.category}
@@ -385,8 +385,8 @@ function ArenaParentCard({ label, core, mine }: { label: string; core: Core; min
 function ArenaStatRow({ label, value, pct }: { label: string; value: number; pct?: boolean }) {
   const display = pct ? `${Math.round(value * 1000) / 10}%` : Math.round(value * 10) / 10;
   return (
-    <div className="flex justify-between text-sm text-[#E9F2ED]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
-      <span className="text-[#7D8C84]">{label}</span>
+    <div className="flex justify-between text-sm text-fg" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+      <span className="text-muted">{label}</span>
       <span>{display}</span>
     </div>
   );

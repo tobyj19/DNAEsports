@@ -13,7 +13,7 @@ export default async function TeamsPage() {
   if (error || !teams) {
     return (
       <div className="rounded-lg border border-line bg-panel p-6">
-        <p className="text-red-400">Couldn&apos;t load teams: {error}</p>
+        <p className="text-bad">Couldn&apos;t load teams: {error}</p>
       </div>
     );
   }

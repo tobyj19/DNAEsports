@@ -163,7 +163,7 @@ export default function PowerSearchClient() {
   return (
     <div>
       <div className="rounded-lg border border-line bg-panel p-4 mb-6">
-        <h2 className="text-sm font-medium text-[#9CA6B0] mb-3">
+        <h2 className="text-sm font-medium text-muted mb-3">
           Filters — a core matches if{" "}
           {modeSelection === "all" ? (
             <>
@@ -176,14 +176,14 @@ export default function PowerSearchClient() {
         </h2>
 
         <div className="mb-4">
-          <label className="block text-xs text-[#9CA6B0] mb-1">Race mode</label>
+          <label className="block text-xs text-muted mb-1">Race mode</label>
           <div className="inline-flex rounded border border-line overflow-hidden">
             {(["all", ...RACE_MODES] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setModeSelection(m)}
                 className={`px-3 py-1.5 text-sm transition-colors ${
-                  modeSelection === m ? "bg-mint text-ink font-medium" : "bg-ink text-[#9CA6B0] hover:text-white"
+                  modeSelection === m ? "bg-cyan text-ink font-medium" : "bg-ink text-muted hover:text-white"
                 }`}
               >
                 {m === "all" ? "All modes" : MODE_LABEL[m]}
@@ -232,7 +232,7 @@ export default function PowerSearchClient() {
             options={TYPE_OPTIONS}
           />
           <div>
-            <label className="block text-xs text-[#9CA6B0] mb-1">Gender</label>
+            <label className="block text-xs text-muted mb-1">Gender</label>
             <select
               value={filter.gender ?? ""}
               onChange={(e) => updateFilter("gender", e.target.value || undefined)}
@@ -250,7 +250,7 @@ export default function PowerSearchClient() {
         {!running ? (
           <button
             onClick={runSearch}
-            className="px-4 py-2 rounded bg-mint text-ink text-sm font-medium hover:opacity-90"
+            className="px-4 py-2 rounded bg-cyan text-ink text-sm font-medium hover:opacity-90"
           >
             Search all cores
           </button>
@@ -277,19 +277,19 @@ export default function PowerSearchClient() {
           <div className="h-2 rounded bg-panel overflow-hidden mb-1">
             <div className="h-full bg-mint transition-all" style={{ width: `${progressPct}%` }} />
           </div>
-          <p className="text-xs text-[#9CA6B0]">
+          <p className="text-xs text-muted">
             Scanned {Math.min(scannedChunks * MAX_CHUNK_SIZE, FULL_RANGE.end)} / {FULL_RANGE.end} core IDs (
             {progressPct}%) — {matches.length} match{matches.length === 1 ? "" : "es"} so far
           </p>
         </div>
       )}
 
-      {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+      {error && <p className="text-bad text-sm mb-4">{error}</p>}
 
       {sorted.length > 0 && (
         <div className="rounded-lg border border-line overflow-hidden overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-panel text-[#9CA6B0] text-xs">
+            <thead className="bg-panel text-muted text-xs">
               <tr>
                 <th className="text-left px-3 py-2">HID</th>
                 <th className="text-left px-3 py-2">Name</th>
@@ -304,9 +304,9 @@ export default function PowerSearchClient() {
             <tbody className="divide-y divide-line">
               {shown.map((c) => (
                 <tr key={c.hid}>
-                  <td className="px-3 py-2 text-[#9CA6B0]">#{c.hid}</td>
+                  <td className="px-3 py-2 text-muted">#{c.hid}</td>
                   <td className="px-3 py-2 font-medium">{c.name}</td>
-                  <td className="px-3 py-2 capitalize text-[#9CA6B0]">
+                  <td className="px-3 py-2 capitalize text-muted">
                     {c.element ?? "—"}/{c.type}
                   </td>
                   {modesToShow.map((mode) => {
@@ -315,7 +315,7 @@ export default function PowerSearchClient() {
                     return (
                       <td
                         key={mode}
-                        className={`px-3 py-2 ${isMatch ? "text-mint font-medium" : "text-[#9CA6B0]"}`}
+                        className={`px-3 py-2 ${isMatch ? "text-mint font-medium" : "text-muted"}`}
                       >
                         {stats
                           ? `${stats.power.toFixed(0)}/${stats.variance.toFixed(0)}/${stats.adjOdds.toFixed(0)} (${stats.racesN})`
@@ -328,7 +328,7 @@ export default function PowerSearchClient() {
             </tbody>
           </table>
           {sorted.length > MAX_DISPLAY && (
-            <p className="text-xs text-[#9CA6B0] px-3 py-2">
+            <p className="text-xs text-muted px-3 py-2">
               Showing top {MAX_DISPLAY} of {sorted.length} matches by best power — download the CSV for the full
               list.
             </p>
@@ -337,7 +337,7 @@ export default function PowerSearchClient() {
       )}
 
       {!running && matches.length === 0 && scannedChunks > 0 && (
-        <p className="text-[#9CA6B0] text-sm">No cores matched those filters.</p>
+        <p className="text-muted text-sm">No cores matched those filters.</p>
       )}
     </div>
   );
@@ -370,7 +370,7 @@ function DualRangeSlider({
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <label className="text-xs text-[#9CA6B0]">{label}</label>
+        <label className="text-xs text-muted">{label}</label>
         <span className="text-xs text-white font-medium tabular-nums">
           {minVal} – {maxVal}
         </span>
@@ -417,7 +417,7 @@ function NumberField({
 }) {
   return (
     <div>
-      <label className="block text-xs text-[#9CA6B0] mb-1">{label}</label>
+      <label className="block text-xs text-muted mb-1">{label}</label>
       <input
         type="number"
         value={value}
@@ -443,7 +443,7 @@ function SelectField({
 }) {
   return (
     <div>
-      <label className="block text-xs text-[#9CA6B0] mb-1">{label}</label>
+      <label className="block text-xs text-muted mb-1">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}

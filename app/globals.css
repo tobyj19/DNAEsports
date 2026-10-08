@@ -7,8 +7,8 @@
 }
 
 body {
-  background-color: #0B0D10;
-  color: #E6E9EC;
+  background-color: #05070D;
+  color: #EAF6FF;
 }
 
 table {
@@ -49,8 +49,8 @@ table {
   width: 14px;
   height: 14px;
   border-radius: 9999px;
-  background: #4ADE80;
-  border: 2px solid #0B0D10;
+  background: #22E5FF;
+  border: 2px solid #05070D;
   cursor: pointer;
   margin-top: -6px;
   position: relative;
@@ -61,7 +61,7 @@ table {
   width: 14px;
   height: 14px;
   border-radius: 9999px;
-  background: #4ADE80;
-  border: 2px solid #0B0D10;
+  background: #22E5FF;
+  border: 2px solid #05070D;
   cursor: pointer;
 }

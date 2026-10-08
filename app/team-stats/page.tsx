@@ -14,7 +14,7 @@ export default async function TeamStatsPage() {
   if (error || !teams || !seasons) {
     return (
       <div className="rounded-lg border border-line bg-panel p-6">
-        <p className="text-red-400">Couldn&apos;t load team stats: {error}</p>
+        <p className="text-bad">Couldn&apos;t load team stats: {error}</p>
       </div>
     );
   }
@@ -32,7 +32,7 @@ export default async function TeamStatsPage() {
   return (
     <div>
       <h1 className="text-2xl font-semibold tracking-tight mb-2">Team Stats</h1>
-      <p className="text-sm text-[#9CA6B0] mb-6 max-w-2xl">
+      <p className="text-sm text-muted mb-6 max-w-2xl">
         Position, record, and by-map win/loss breakdown for any team, by season. Computed live from
         match results and standings.
       </p>

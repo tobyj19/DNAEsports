@@ -13,7 +13,7 @@ type PaidFilter = "all" | "paid" | "free";
 const PAGE = 50;
 const ROLLING = 10;
 
-const tooltipStyle = { backgroundColor: "#12161C", border: "1px solid #232A33", borderRadius: 10 };
+const tooltipStyle = { backgroundColor: "#0B111A", border: "1px solid #1B2533", borderRadius: 10 };
 
 function toggleIn(set: Set<string>, id: string): Set<string> {
   const next = new Set(set);
@@ -92,7 +92,7 @@ export default function RaceHistory({
               <button
                 key={id}
                 onClick={() => setView(id)}
-                className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${view === id ? "text-ink font-semibold" : "text-[#9CA6B0] hover:text-white"}`}
+                className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${view === id ? "text-ink font-semibold" : "text-muted hover:text-white"}`}
                 style={view === id ? { background: accent } : undefined}
               >
                 {label}
@@ -104,7 +104,7 @@ export default function RaceHistory({
               <button
                 key={p}
                 onClick={() => setPaid(p)}
-                className={`rounded-lg px-3 py-1.5 text-sm capitalize transition-colors ${paid === p ? "bg-white/10 text-white font-medium" : "text-[#9CA6B0] hover:text-white"}`}
+                className={`rounded-lg px-3 py-1.5 text-sm capitalize transition-colors ${paid === p ? "bg-white/10 text-white font-medium" : "text-muted hover:text-white"}`}
               >
                 {p}
               </button>
@@ -156,7 +156,7 @@ function FilterRow({ label, options, selected, onToggle, accent }: {
 }) {
   return (
     <div className="mb-3">
-      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9CA6B0]">
+      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
         {label}
         {selected.size > 0 && <span className="ml-2 normal-case tracking-normal" style={{ color: accent }}>{selected.size} selected</span>}
       </div>
@@ -167,7 +167,7 @@ function FilterRow({ label, options, selected, onToggle, accent }: {
             <button
               key={id}
               onClick={() => onToggle(id)}
-              className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${on ? "text-white" : "border-white/[0.07] bg-black/20 text-[#9CA6B0] hover:text-white hover:border-white/20"}`}
+              className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${on ? "text-white" : "border-white/[0.07] bg-black/20 text-muted hover:text-white hover:border-white/20"}`}
               style={on ? { borderColor: `${accent}88`, background: `${accent}26` } : undefined}
             >
               {on && "✓ "}
@@ -182,7 +182,7 @@ function FilterRow({ label, options, selected, onToggle, accent }: {
 
 function Switch({ label, on, onChange, accent }: { label: string; on: boolean; onChange: (v: boolean) => void; accent: string }) {
   return (
-    <button onClick={() => onChange(!on)} className="flex items-center gap-2 text-xs text-[#9CA6B0] hover:text-white">
+    <button onClick={() => onChange(!on)} className="flex items-center gap-2 text-xs text-muted hover:text-white">
       <span className="relative h-4 w-7 rounded-full transition-colors" style={{ background: on ? accent : "rgba(255,255,255,0.12)" }}>
         <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${on ? "left-3.5" : "left-0.5"}`} />
       </span>
@@ -194,7 +194,7 @@ function Switch({ label, on, onChange, accent }: { label: string; on: boolean; o
 function StatTile({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-gradient-to-b from-white/[0.04] to-white/[0.01] p-3">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9CA6B0]">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
         {label}
         {sub && <span className="ml-1 normal-case tracking-normal opacity-70">{sub}</span>}
       </div>
@@ -207,7 +207,7 @@ function Check({ ok, title }: { ok: boolean; title: string }) {
   return (
     <span
       title={title}
-      className={`inline-flex h-5 w-5 items-center justify-center rounded-md text-[11px] font-bold ${ok ? "bg-mint/15 text-mint" : "bg-white/[0.04] text-[#4B5563]"}`}
+      className={`inline-flex h-5 w-5 items-center justify-center rounded-md text-[11px] font-bold ${ok ? "bg-mint/15 text-mint" : "bg-white/[0.04] text-faint"}`}
     >
       {ok ? "✓" : "–"}
     </span>
@@ -216,14 +216,14 @@ function Check({ ok, title }: { ok: boolean; title: string }) {
 
 function RaceList({ races, total, onMore, mode }: { races: SlimRace[]; total: number; onMore: () => void; mode: RaceMode }) {
   return (
-    <Card title="Races" right={<span className="text-xs text-[#9CA6B0]">{total.toLocaleString("en-US")} matching</span>}>
+    <Card title="Races" right={<span className="text-xs text-muted">{total.toLocaleString("en-US")} matching</span>}>
       {races.length === 0 ? (
-        <p className="text-sm text-[#9CA6B0]">No races match these filters.</p>
+        <p className="text-sm text-muted">No races match these filters.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-[10px] uppercase tracking-wider text-[#9CA6B0]">
+              <tr className="text-[10px] uppercase tracking-wider text-muted">
                 <th className="py-2 text-left font-semibold">Date</th>
                 <th className="text-left font-semibold">Race</th>
                 <th className="text-right font-semibold">Dist</th>
@@ -241,10 +241,10 @@ function RaceList({ races, total, onMore, mode }: { races: SlimRace[]; total: nu
                 const profit = r.prize - r.fee;
                 return (
                   <tr key={`${r.at}-${i}`} className="border-t border-white/[0.05]">
-                    <td className="py-2 pr-2 whitespace-nowrap text-xs text-[#9CA6B0] tabular-nums">{r.at ? r.at.slice(0, 10) : "—"}</td>
+                    <td className="py-2 pr-2 whitespace-nowrap text-xs text-muted tabular-nums">{r.at ? r.at.slice(0, 10) : "—"}</td>
                     <td className="pr-2 max-w-[14rem] truncate" title={r.name}>
                       {r.name}
-                      <span className="ml-1.5 text-[10px] text-[#9CA6B0]">{r.gates}g</span>
+                      <span className="ml-1.5 text-[10px] text-muted">{r.gates}g</span>
                     </td>
                     <td className="text-right tabular-nums">{r.distance}</td>
                     <td className="text-right tabular-nums font-semibold">
@@ -253,14 +253,14 @@ function RaceList({ races, total, onMore, mode }: { races: SlimRace[]; total: nu
                       {r.star === 3 || r.star === 5 ? <span className="text-yellow-400">★</span> : null}
                     </td>
                     <td className="text-right tabular-nums">{r.time.toFixed(2)}</td>
-                    <td className={`text-right tabular-nums ${profit > 0 ? "text-mint" : profit < 0 ? "text-red-400" : "text-[#9CA6B0]"}`}>
+                    <td className={`text-right tabular-nums ${profit > 0 ? "text-mint" : profit < 0 ? "text-bad" : "text-muted"}`}>
                       {profit > 0 ? "+" : ""}
                       {r.token === "DEZ" ? Math.round(profit).toLocaleString("en-US") : `${+profit.toFixed(4)} ${r.token}`}
                     </td>
                     <td className="text-center"><Check ok={r.pos === 1} title="Won" /></td>
                     <td className="text-center"><Check ok={r.pos <= 3} title="Top 3" /></td>
                     <td className="text-center">
-                      {field != null ? <Check ok={r.time < field} title="Faster than field average" /> : <span className="text-[#4B5563]">·</span>}
+                      {field != null ? <Check ok={r.time < field} title="Faster than field average" /> : <span className="text-faint">·</span>}
                     </td>
                   </tr>
                 );
@@ -268,7 +268,7 @@ function RaceList({ races, total, onMore, mode }: { races: SlimRace[]; total: nu
             </tbody>
           </table>
           {races.length < total && (
-            <button onClick={onMore} className="mt-3 w-full rounded-xl border border-white/[0.07] py-2 text-sm text-[#9CA6B0] hover:bg-white/[0.04] hover:text-white">
+            <button onClick={onMore} className="mt-3 w-full rounded-xl border border-white/[0.07] py-2 text-sm text-muted hover:bg-white/[0.04] hover:text-white">
               Show more ({(total - races.length).toLocaleString("en-US")} left)
             </button>
           )}
@@ -288,13 +288,13 @@ function FinishDistro({ races, accent }: { races: SlimRace[]; accent: string }) 
   return (
     <Card title="Finish distribution">
       {races.length === 0 ? (
-        <p className="text-sm text-[#9CA6B0]">No races match these filters.</p>
+        <p className="text-sm text-muted">No races match these filters.</p>
       ) : (
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={rows} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
             <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
-            <XAxis dataKey="pos" tick={{ fill: "#9CA6B0", fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis unit="%" tick={{ fill: "#9CA6B0", fontSize: 11 }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="pos" tick={{ fill: "#8B9BB0", fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis unit="%" tick={{ fill: "#8B9BB0", fontSize: 11 }} axisLine={false} tickLine={false} />
             <Tooltip
               cursor={{ fill: "rgba(255,255,255,0.04)" }}
               contentStyle={tooltipStyle}
@@ -319,15 +319,15 @@ function SpeedTrend({ races, accent }: { races: SlimRace[]; accent: string }) {
     return { i: i + 1, date: r.at?.slice(0, 10) ?? "", distance: r.distance, speed: +speed.toFixed(3), rolling: +rolling.toFixed(3) };
   });
   return (
-    <Card title="Speed over time" right={<span className="text-xs text-[#9CA6B0]">m/s · {ROLLING}-race rolling average</span>}>
+    <Card title="Speed over time" right={<span className="text-xs text-muted">m/s · {ROLLING}-race rolling average</span>}>
       {rows.length === 0 ? (
-        <p className="text-sm text-[#9CA6B0]">No races match these filters.</p>
+        <p className="text-sm text-muted">No races match these filters.</p>
       ) : (
         <ResponsiveContainer width="100%" height={280}>
           <LineChart data={rows} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
             <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
-            <XAxis dataKey="i" tick={{ fill: "#9CA6B0", fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis domain={["dataMin - 0.2", "dataMax + 0.2"]} tickFormatter={(v) => Number(v).toFixed(1)} tick={{ fill: "#9CA6B0", fontSize: 11 }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="i" tick={{ fill: "#8B9BB0", fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis domain={["dataMin - 0.2", "dataMax + 0.2"]} tickFormatter={(v) => Number(v).toFixed(1)} tick={{ fill: "#8B9BB0", fontSize: 11 }} axisLine={false} tickLine={false} />
             <Tooltip
               contentStyle={tooltipStyle}
               labelFormatter={(_l, payload) => {

@@ -37,7 +37,7 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
   const poolAvg = useMemo(() => computeGroupPowerAverages(qualifyingPool), [qualifyingPool]);
 
   return (
-    <div className="min-h-screen bg-[#0B0F0E] text-[#E9F2ED]">
+    <div className="min-h-screen bg-ink text-fg">
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link
         href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
@@ -45,8 +45,8 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
       />
 
       <div className="mx-auto max-w-6xl px-6 py-10 sm:px-10">
-        <header className="mb-10 border-b border-[#22302A] pb-6">
-          <p className="text-sm text-[#7D8C84]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+        <header className="mb-10 border-b border-line pb-6">
+          <p className="text-sm text-muted" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
             DNA-Esports / Strategy
           </p>
           <h1
@@ -55,21 +55,21 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
           >
             Esports Core Discovery
           </h1>
-          <p className="mt-2 max-w-2xl text-[#B7C3BC]">
+          <p className="mt-2 max-w-2xl text-soft">
             Top 25 rostered cores by individual Core Win% and by Team Score% — recomputed live
             from every race-type x distance cell as you change filters, not just a fixed
             precomputed view. {cores.length} cores with league history, across every registered
             team.
           </p>
-          <p className="mt-1 text-xs text-[#7D8C84]" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+          <p className="mt-1 text-xs text-muted" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
             Stats built {new Date(builtAt).toLocaleString()} · re-scanned at most once an hour
           </p>
         </header>
 
-        <section className="mb-8 flex flex-wrap items-end gap-4 border-b border-[#22302A] pb-6">
+        <section className="mb-8 flex flex-wrap items-end gap-4 border-b border-line pb-6">
           <div>
             <label
-              className="mb-1 block text-xs uppercase tracking-wide text-[#7D8C84]"
+              className="mb-1 block text-xs uppercase tracking-wide text-muted"
               style={{ fontFamily: "'IBM Plex Mono', monospace" }}
             >
               Gates
@@ -77,7 +77,7 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
             <select
               value={filters.gates}
               onChange={(e) => setFilters((f) => ({ ...f, gates: e.target.value === "All" ? "All" : Number(e.target.value) }))}
-              className="rounded-md border border-[#22302A] bg-[#121815] px-3 py-2 text-[#E9F2ED] outline-none focus:border-[#8CFF6B]"
+              className="rounded-md border border-line bg-panel px-3 py-2 text-fg outline-none focus:border-cyan"
             >
               <option value="All">All</option>
               {KNOWN_GATE_COUNTS.map((g) => (
@@ -90,7 +90,7 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
 
           <div>
             <label
-              className="mb-1 block text-xs uppercase tracking-wide text-[#7D8C84]"
+              className="mb-1 block text-xs uppercase tracking-wide text-muted"
               style={{ fontFamily: "'IBM Plex Mono', monospace" }}
             >
               Distance
@@ -98,7 +98,7 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
             <select
               value={filters.distance}
               onChange={(e) => setFilters((f) => ({ ...f, distance: e.target.value }))}
-              className="rounded-md border border-[#22302A] bg-[#121815] px-3 py-2 text-[#E9F2ED] outline-none focus:border-[#8CFF6B]"
+              className="rounded-md border border-line bg-panel px-3 py-2 text-fg outline-none focus:border-cyan"
             >
               <option value="All">All</option>
               {DISTANCE_OPTIONS.map((code) => (
@@ -111,7 +111,7 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
 
           <div>
             <label
-              className="mb-1 block text-xs uppercase tracking-wide text-[#7D8C84]"
+              className="mb-1 block text-xs uppercase tracking-wide text-muted"
               style={{ fontFamily: "'IBM Plex Mono', monospace" }}
             >
               Payout
@@ -119,7 +119,7 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
             <select
               value={filters.payout}
               onChange={(e) => setFilters((f) => ({ ...f, payout: e.target.value as "All" | PayoutFamily }))}
-              className="rounded-md border border-[#22302A] bg-[#121815] px-3 py-2 text-[#E9F2ED] outline-none focus:border-[#8CFF6B]"
+              className="rounded-md border border-line bg-panel px-3 py-2 text-fg outline-none focus:border-cyan"
             >
               <option value="All">All</option>
               <option value="onevone">1v1</option>
@@ -130,7 +130,7 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
 
           <div>
             <label
-              className="mb-1 block text-xs uppercase tracking-wide text-[#7D8C84]"
+              className="mb-1 block text-xs uppercase tracking-wide text-muted"
               style={{ fontFamily: "'IBM Plex Mono', monospace" }}
             >
               Min. races
@@ -138,7 +138,7 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
             <select
               value={filters.minRaces}
               onChange={(e) => setFilters((f) => ({ ...f, minRaces: Number(e.target.value) }))}
-              className="rounded-md border border-[#22302A] bg-[#121815] px-3 py-2 text-[#E9F2ED] outline-none focus:border-[#8CFF6B]"
+              className="rounded-md border border-line bg-panel px-3 py-2 text-fg outline-none focus:border-cyan"
             >
               {MIN_RACES_OPTIONS.map((n) => (
                 <option key={n} value={n}>
@@ -150,7 +150,7 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
         </section>
 
         {filters.payout === "madness" && (
-          <p className="mb-6 rounded-md border border-[#4A3A22] bg-[#1A140D] px-4 py-2 text-sm text-[#F2C879]">
+          <p className="mb-6 rounded-md border border-amber/30 bg-amber/10 px-4 py-2 text-sm text-amber">
             Under podium-majority scoring, "Win %" counts a top-3 finish, not strictly 1st — that's
             how the league books it, so Win % and a strict "outright win" rate aren't the same
             number here.
@@ -183,11 +183,11 @@ function LeaderboardTable({
         {title}
       </h2>
       {entries.length === 0 ? (
-        <p className="text-sm text-[#7D8C84]">No cores meet this filter combination yet.</p>
+        <p className="text-sm text-muted">No cores meet this filter combination yet.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[#22302A]">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-left text-sm" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
-            <thead className="border-b border-[#22302A] bg-[#0E1512] text-xs uppercase tracking-wide text-[#7D8C84]">
+            <thead className="border-b border-line bg-panel text-xs uppercase tracking-wide text-muted">
               <tr>
                 <th className="px-3 py-2">#</th>
                 <th className="px-3 py-2">Core</th>
@@ -203,28 +203,28 @@ function LeaderboardTable({
             </thead>
             <tbody>
               {entries.map((c, i) => (
-                <tr key={c.hid} className="border-b border-[#182018] last:border-0">
-                  <td className="px-3 py-2 text-[#7D8C84]">{i + 1}</td>
-                  <td className="px-3 py-2 text-[#E9F2ED]">
-                    {c.name} <span className="text-[#7D8C84]">#{c.hid}</span>
-                    <div className="text-xs text-[#7D8C84]">
+                <tr key={c.hid} className="border-b border-panel2 last:border-0">
+                  <td className="px-3 py-2 text-muted">{i + 1}</td>
+                  <td className="px-3 py-2 text-fg">
+                    {c.name} <span className="text-muted">#{c.hid}</span>
+                    <div className="text-xs text-muted">
                       {c.element} · {c.type}
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-[#B7C3BC]">{c.teamName}</td>
-                  <td className="px-3 py-2 text-[#B7C3BC]">{c.races_n}</td>
-                  <td className={`px-3 py-2 ${metric === "win_p" ? "text-[#8CFF6B]" : "text-[#B7C3BC]"}`}>
+                  <td className="px-3 py-2 text-soft">{c.teamName}</td>
+                  <td className="px-3 py-2 text-soft">{c.races_n}</td>
+                  <td className={`px-3 py-2 ${metric === "win_p" ? "text-cyan" : "text-soft"}`}>
                     {Math.round(c.win_p * 1000) / 10}%
                   </td>
-                  <td className={`px-3 py-2 ${metric === "team_win_p" ? "text-[#8CFF6B]" : "text-[#B7C3BC]"}`}>
+                  <td className={`px-3 py-2 ${metric === "team_win_p" ? "text-cyan" : "text-soft"}`}>
                     {Math.round(c.team_win_p * 1000) / 10}%
                   </td>
-                  <td className="px-3 py-2 text-[#7D8C84]">
+                  <td className="px-3 py-2 text-muted">
                     {c.avgFinishPct !== null ? `${Math.round(c.avgFinishPct)}/100` : "—"}
                   </td>
-                  <td className="px-3 py-2 text-[#B7C3BC]">{formatPct(c.power)}</td>
-                  <td className="px-3 py-2 text-[#B7C3BC]">{formatPct(c.variance)}</td>
-                  <td className="px-3 py-2 text-[#B7C3BC]">{formatPct(c.adjOdds)}</td>
+                  <td className="px-3 py-2 text-soft">{formatPct(c.power)}</td>
+                  <td className="px-3 py-2 text-soft">{formatPct(c.variance)}</td>
+                  <td className="px-3 py-2 text-soft">{formatPct(c.adjOdds)}</td>
                 </tr>
               ))}
             </tbody>
@@ -257,14 +257,14 @@ function PowerProfileSummary({
   if (poolAvg.count === 0) return null;
 
   return (
-    <section className="mb-8 rounded-lg border border-[#22302A] bg-[#121815] p-5">
+    <section className="mb-8 rounded-lg border border-line bg-panel p-5">
       <h2
-        className="mb-1 text-sm font-semibold uppercase tracking-wide text-[#7D8C84]"
+        className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted"
         style={{ fontFamily: "'IBM Plex Mono', monospace" }}
       >
         What's winning here
       </h2>
-      <p className="mb-4 text-xs text-[#7D8C84]">
+      <p className="mb-4 text-xs text-muted">
         Average bike-mode power stats — Top 25 lists vs. every core that simply qualifies (meets
         the min-races filter) for this Gates/Distance/Payout combination.
       </p>
@@ -278,11 +278,11 @@ function PowerProfileSummary({
 }
 
 function PowerProfileRow({ label, avg, accent }: { label: string; avg: GroupPowerAverages; accent: boolean }) {
-  const color = accent ? "text-[#8CFF6B]" : "text-[#B7C3BC]";
+  const color = accent ? "text-cyan" : "text-soft";
   return (
     <div>
-      <div className="mb-1 text-xs text-[#7D8C84]">
-        {label} <span className="text-[#54615A]">({avg.count})</span>
+      <div className="mb-1 text-xs text-muted">
+        {label} <span className="text-faint">({avg.count})</span>
       </div>
       <div className="flex gap-4 text-sm">
         <span className={color}>PWR {formatPct(avg.avgPower)}</span>

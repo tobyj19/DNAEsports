@@ -77,27 +77,27 @@ export default function CoreSearchClient({ initialQuery = "" }: { initialQuery?:
       </form>
 
       {searching && (
-        <p className="text-xs text-[#9CA6B0] mb-2">
+        <p className="text-xs text-muted mb-2">
           Searching…{indexed == null ? " The first search builds an index of every core in the game, so it can take a few seconds." : ""}
         </p>
       )}
-      {searchError && <p className="text-red-400 text-sm mb-2">{searchError}</p>}
+      {searchError && <p className="text-bad text-sm mb-2">{searchError}</p>}
       {!searching && query.trim() && !searchError && (
-        <p className="text-xs text-[#9CA6B0] mb-2">
+        <p className="text-xs text-muted mb-2">
           {total} match{total === 1 ? "" : "es"}
           {total > results.length ? ` — showing first ${results.length}, refine your search` : ""}
           {indexed != null ? ` · ${indexed.toLocaleString()} cores indexed` : ""}
         </p>
       )}
 
-      <div className="rounded-lg border border-line overflow-hidden max-h-[36rem] overflow-y-auto">
+      <div className="rounded-lg border border-line overflow-hidden">
         {!query.trim() && (
-          <div className="px-4 py-6 text-center text-[#9CA6B0] text-sm">
+          <div className="px-4 py-6 text-center text-muted text-sm">
             Type a core name (e.g. &ldquo;Kingpin&rdquo;) or an ID (e.g. 1).
           </div>
         )}
         {query.trim() && !searching && !searchError && results.length === 0 && (
-          <div className="px-4 py-6 text-center text-[#9CA6B0] text-sm">No cores match.</div>
+          <div className="px-4 py-6 text-center text-muted text-sm">No cores match.</div>
         )}
         <div className="divide-y divide-line">
           {results.map((c, i) => (
@@ -108,12 +108,12 @@ export default function CoreSearchClient({ initialQuery = "" }: { initialQuery?:
             >
               <div className="flex items-center justify-between">
                 <span className="font-medium">{c.name}</span>
-                <span className="text-xs text-[#9CA6B0]">
+                <span className="text-xs text-muted">
                   #{c.hid}
                   {i === 0 && <span className="ml-2 rounded border border-line px-1 text-[10px]">Enter ↵</span>}
                 </span>
               </div>
-              <div className="text-xs text-[#9CA6B0] capitalize">
+              <div className="text-xs text-muted capitalize">
                 {c.element ?? "—"}/{c.type} · {c.gender}
                 {c.vaultName ? <span className="normal-case"> · {c.vaultName}</span> : null}
               </div>

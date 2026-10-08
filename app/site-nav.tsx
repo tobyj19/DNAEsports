@@ -50,7 +50,7 @@ export default function SiteNav() {
 
   return (
     <header className="border-b border-line">
-      <nav className="max-w-5xl mx-auto px-6 py-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+      <nav className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center gap-x-6 gap-y-3">
         <Link href="/" aria-label="DNA Analytics home" className="shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/logo-horizontal.svg" alt="DNA Analytics" className="h-10 w-auto" />
@@ -63,7 +63,7 @@ export default function SiteNav() {
                 key={s}
                 href={SECTIONS[s].home}
                 className={`rounded-md px-2.5 py-1 transition-colors ${
-                  s === section ? "bg-white/10 text-white font-medium" : "text-[#9CA6B0] hover:text-white"
+                  s === section ? "bg-white/10 text-white font-medium" : "text-muted hover:text-white"
                 }`}
               >
                 {SECTIONS[s].label}
@@ -73,7 +73,7 @@ export default function SiteNav() {
         )}
 
         {section && (
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#9CA6B0]">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
             {SECTIONS[section].links.map((l) => (
               <Link
                 key={l.href}

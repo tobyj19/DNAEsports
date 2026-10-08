@@ -9,7 +9,7 @@ export const ELEMENT_ACCENT: Record<string, string> = {
   fire: "#FB923C",
   earth: "#D6A35C",
 };
-export const DEFAULT_ACCENT = "#4ADE80";
+export const DEFAULT_ACCENT = "#22E5FF";
 
 export const MODE_ICON = { bike: "🏍️", car: "🏎️", horse: "🐎" } as const;
 
@@ -33,7 +33,7 @@ export function Card({ title, right, children, className = "" }: {
     >
       {title && (
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9CA6B0]">{title}</h3>
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">{title}</h3>
           {right}
         </div>
       )}
@@ -70,7 +70,7 @@ export function Ring({ label, value, color }: { label: string; value: number | n
           <span className="text-xl font-bold tabular-nums">{value != null ? `${value.toFixed(0)}%` : "—"}</span>
         </div>
       </div>
-      <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9CA6B0]">{label}</span>
+      <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">{label}</span>
     </div>
   );
 }
@@ -95,7 +95,7 @@ export function Meter({ label, icon, value, max, from, to, sub }: {
           {label}
         </span>
         <span className="text-sm font-semibold tabular-nums">
-          {value.toLocaleString("en-US")} <span className="text-[#9CA6B0] font-normal">/ {max.toLocaleString("en-US")}</span>
+          {value.toLocaleString("en-US")} <span className="text-muted font-normal">/ {max.toLocaleString("en-US")}</span>
         </span>
       </div>
       <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
@@ -109,7 +109,7 @@ export function Meter({ label, icon, value, max, from, to, sub }: {
           }}
         />
       </div>
-      {sub && <div className="mt-2 text-xs text-[#9CA6B0]">{sub}</div>}
+      {sub && <div className="mt-2 text-xs text-muted">{sub}</div>}
     </Card>
   );
 }
@@ -117,7 +117,7 @@ export function Meter({ label, icon, value, max, from, to, sub }: {
 export function Chip({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9CA6B0]">{label}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{label}</div>
       <div className="text-sm font-semibold capitalize">{value}</div>
     </div>
   );

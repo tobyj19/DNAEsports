@@ -54,7 +54,7 @@ export default function MapFitPage() {
   return (
     <div>
       <h1 className="text-2xl font-semibold tracking-tight mb-2">Map Fit Calculator</h1>
-      <p className="text-sm text-[#9CA6B0] mb-6 max-w-2xl">
+      <p className="text-sm text-muted mb-6 max-w-2xl">
         Enter each core&apos;s win % by race type (from the site&apos;s Core Stats page, or your own
         tracking). The score below estimates expected races won out of 16 for each map, based on the
         fixed race-type mix in that map&apos;s first 16 races. Saved locally in your browser.
@@ -63,7 +63,7 @@ export default function MapFitPage() {
       <div className="rounded-lg border border-line overflow-x-auto mb-6">
         <table className="text-sm w-full">
           <thead>
-            <tr className="bg-panel text-left text-[#9CA6B0]">
+            <tr className="bg-panel text-left text-muted">
               <th className="px-3 py-2 font-medium sticky left-0 bg-panel">Core</th>
               {RACE_TYPES.map((t) => (
                 <th key={t} className="px-2 py-2 font-medium whitespace-nowrap">
@@ -100,7 +100,7 @@ export default function MapFitPage() {
                 <td className="px-2 py-2">
                   <button
                     onClick={() => removeCore(i)}
-                    className="text-[#9CA6B0] hover:text-red-400 text-xs"
+                    className="text-muted hover:text-bad text-xs"
                   >
                     remove
                   </button>
@@ -122,7 +122,7 @@ export default function MapFitPage() {
       <div className="overflow-x-auto rounded-lg border border-line">
         <table className="text-sm w-full">
           <thead>
-            <tr className="bg-panel text-left text-[#9CA6B0]">
+            <tr className="bg-panel text-left text-muted">
               <th className="px-4 py-3 font-medium">Core</th>
               {MAP_NAMES.map((m) => (
                 <th key={m} className="px-4 py-3 font-medium text-center">
@@ -154,7 +154,7 @@ export default function MapFitPage() {
             )}
             {validCores.length === 0 && (
               <tr>
-                <td colSpan={MAP_NAMES.length + 1} className="px-4 py-6 text-center text-[#9CA6B0]">
+                <td colSpan={MAP_NAMES.length + 1} className="px-4 py-6 text-center text-muted">
                   Add a core with a name to see scores.
                 </td>
               </tr>

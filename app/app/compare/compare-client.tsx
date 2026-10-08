@@ -24,7 +24,7 @@ function SummaryRow({
   const bLeads = a != null && b != null && b > a;
   return (
     <tr className="border-t border-line">
-      <td className="px-4 py-3 text-[#9CA6B0]">{label}</td>
+      <td className="px-4 py-3 text-muted">{label}</td>
       <td className={`px-4 py-3 text-center font-medium ${aLeads ? "text-mint" : ""}`}>{fmtPct(a)}</td>
       <td className={`px-4 py-3 text-center font-medium ${bLeads ? "text-mint" : ""}`}>{fmtPct(b)}</td>
     </tr>
@@ -37,7 +37,7 @@ function CoreTable({ cores }: { cores: CoreProfile[] }) {
     <div className="overflow-x-auto rounded-lg border border-line">
       <table className="text-sm w-full">
         <thead>
-          <tr className="bg-panel text-left text-[#9CA6B0]">
+          <tr className="bg-panel text-left text-muted">
             <th className="px-3 py-2 font-medium">Core</th>
             <th className="px-3 py-2 font-medium">Power</th>
             <th className="px-3 py-2 font-medium">Var</th>
@@ -53,7 +53,7 @@ function CoreTable({ cores }: { cores: CoreProfile[] }) {
             <tr key={c.hid} className="border-t border-line">
               <td className="px-3 py-2">
                 <div className="font-medium">{c.name}</div>
-                <div className="text-xs text-[#9CA6B0] capitalize">
+                <div className="text-xs text-muted capitalize">
                   #{c.hid} · {c.element}/{c.type}
                 </div>
               </td>
@@ -108,7 +108,7 @@ export default function CompareClient({ teams }: { teams: Team[] }) {
     <div>
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end mb-8">
         <div>
-          <label className="block text-xs text-[#9CA6B0] mb-1">Team A</label>
+          <label className="block text-xs text-muted mb-1">Team A</label>
           <select
             value={teamAId}
             onChange={(e) => setTeamAId(e.target.value)}
@@ -123,7 +123,7 @@ export default function CompareClient({ teams }: { teams: Team[] }) {
           </select>
         </div>
         <div>
-          <label className="block text-xs text-[#9CA6B0] mb-1">Team B</label>
+          <label className="block text-xs text-muted mb-1">Team B</label>
           <select
             value={teamBId}
             onChange={(e) => setTeamBId(e.target.value)}
@@ -140,7 +140,7 @@ export default function CompareClient({ teams }: { teams: Team[] }) {
         <button
           onClick={runCompare}
           disabled={!teamAId || !teamBId || loading}
-          className="px-4 py-2 rounded bg-mint text-ink text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-4 py-2 rounded bg-cyan text-ink text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {loading ? "Comparing…" : "Compare"}
         </button>
@@ -148,7 +148,7 @@ export default function CompareClient({ teams }: { teams: Team[] }) {
 
       {error && (
         <div className="mb-6">
-          <p className="text-red-400 mb-2">{error}</p>
+          <p className="text-bad mb-2">{error}</p>
           <button
             onClick={runCompare}
             className="px-3 py-1.5 rounded border border-line text-sm hover:bg-panel transition-colors"
@@ -159,7 +159,7 @@ export default function CompareClient({ teams }: { teams: Team[] }) {
       )}
 
       {loading && (
-        <p className="text-[#9CA6B0]">
+        <p className="text-muted">
           Pulling Power, Variance, and race history for up to 50 cores — this can take 15-30 seconds
           the first time.
         </p>
@@ -170,7 +170,7 @@ export default function CompareClient({ teams }: { teams: Team[] }) {
           <div className="overflow-x-auto rounded-lg border border-line mb-8">
             <table className="text-sm w-full">
               <thead>
-                <tr className="bg-panel text-left text-[#9CA6B0]">
+                <tr className="bg-panel text-left text-muted">
                   <th className="px-4 py-3 font-medium"></th>
                   <th className="px-4 py-3 font-medium text-center">{profileA.teamName}</th>
                   <th className="px-4 py-3 font-medium text-center">{profileB.teamName}</th>

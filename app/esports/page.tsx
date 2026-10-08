@@ -2,10 +2,10 @@ import { getStandings } from "@/lib/api";
 
 function zoneLabel(zone: string | null) {
   if (!zone) return null;
-  if (zone === "relegate") return { text: "Relegation", color: "text-red-400" };
+  if (zone === "relegate") return { text: "Relegation", color: "text-bad" };
   if (zone === "risk") return { text: "At risk", color: "text-amber" };
   if (zone === "promote") return { text: "Promotion", color: "text-mint" };
-  return { text: zone, color: "text-[#9CA6B0]" };
+  return { text: zone, color: "text-muted" };
 }
 
 export default async function StandingsPage() {
@@ -20,7 +20,7 @@ export default async function StandingsPage() {
   if (error || !data) {
     return (
       <div className="rounded-lg border border-line bg-panel p-6">
-        <p className="text-red-400">Couldn&apos;t load standings: {error}</p>
+        <p className="text-bad">Couldn&apos;t load standings: {error}</p>
       </div>
     );
   }
@@ -32,7 +32,7 @@ export default async function StandingsPage() {
     <div>
       <div className="flex items-baseline justify-between mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">{data.subtitle}</h1>
-        <span className="text-sm text-[#9CA6B0]">
+        <span className="text-sm text-muted">
           {data.events_used} events played · updated {new Date(data.built_at).toLocaleString()}
         </span>
       </div>
@@ -40,7 +40,7 @@ export default async function StandingsPage() {
       <div className="overflow-x-auto rounded-lg border border-line">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-panel text-left text-[#9CA6B0]">
+            <tr className="bg-panel text-left text-muted">
               <th className="px-4 py-3 font-medium">#</th>
               <th className="px-4 py-3 font-medium">Team</th>
               <th className="px-4 py-3 font-medium">Group</th>
@@ -56,9 +56,9 @@ export default async function StandingsPage() {
               const zone = zoneLabel(row.zone);
               return (
                 <tr key={row.team_id} className="border-t border-line hover:bg-panel/60">
-                  <td className="px-4 py-3 text-[#9CA6B0]">{row.rank}</td>
+                  <td className="px-4 py-3 text-muted">{row.rank}</td>
                   <td className="px-4 py-3 font-medium">{row.team_name}</td>
-                  <td className="px-4 py-3 text-[#9CA6B0] capitalize">{row.group}</td>
+                  <td className="px-4 py-3 text-muted capitalize">{row.group}</td>
                   <td className="px-4 py-3 text-right">
                     {row.event_w}-{row.event_l}
                     {row.event_d ? `-${row.event_d}` : ""}

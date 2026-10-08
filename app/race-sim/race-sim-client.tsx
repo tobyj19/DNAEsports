@@ -6,8 +6,8 @@ import { SIM_DISTANCES, THIN_SAMPLE, simulateRace, type SimCore, type SimResult 
 const MIN_GATES = 2;
 const MAX_GATES = 14;
 const CHUNK = 20;
-const MAX_MATCHES = 8;
-const MUTED = "text-[#9CA6B0]";
+const MAX_MATCHES = 7; // short enough that the dropdown never needs its own scroll bar
+const MUTED = "text-muted";
 
 export interface DirectoryCore {
   hid: number;
@@ -189,7 +189,7 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
                   key={d}
                   onClick={() => setDistance(d)}
                   aria-pressed={d === distance}
-                  className={`px-3 py-1.5 text-sm transition-colors ${d === distance ? "bg-mint text-ink font-medium" : "hover:bg-ink"}`}
+                  className={`px-3 py-1.5 text-sm transition-colors ${d === distance ? "bg-cyan text-ink font-medium" : "hover:bg-ink"}`}
                 >
                   {d}m
                 </button>
@@ -197,7 +197,7 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm pb-1.5 cursor-pointer">
-            <input type="checkbox" checked={paidOnly} onChange={(e) => setPaidOnly(e.target.checked)} className="accent-[#4ADE80]" />
+            <input type="checkbox" checked={paidOnly} onChange={(e) => setPaidOnly(e.target.checked)} className="accent-cyan" />
             Paid races only
             <span className={`text-xs ${MUTED}`}>(closer to the game&apos;s own VAR, fewer races per core)</span>
           </label>
@@ -220,7 +220,7 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
             className="bg-ink border border-line rounded px-2 py-1.5 text-sm w-full disabled:opacity-50"
           />
           {hasEmptyGate && q.length >= 2 && (
-            <ul className="absolute z-10 left-0 right-0 mt-1 rounded border border-line bg-ink shadow-lg max-h-72 overflow-auto">
+            <ul className="absolute z-10 left-0 right-0 mt-1 rounded border border-line bg-ink shadow-lg">
               {matches.length === 0 && <li className={`px-3 py-2 text-sm ${MUTED}`}>No core found. Try its core ID.</li>}
               {matches.map((c) => (
                 <li key={c.hid}>
@@ -254,7 +254,7 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
           </div>
           <p className={`text-xs ${MUTED} mt-1`}>Name search covers cores rostered on an esports team. Any other core needs its ID or its vault.</p>
         </details>
-        {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
+        {error && <p className="text-bad text-sm mt-3">{error}</p>}
       </div>
 
       {(
@@ -279,7 +279,7 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
           <div className={`flex flex-wrap gap-x-5 gap-y-1 text-xs ${MUTED} mb-2`}>
             <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block" />Slow end (1 race in 10 is slower)</span>
             <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-mint inline-block" />Typical time</span>
-            <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" />Fast end (1 race in 10 is faster)</span>
+            <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-bad inline-block" />Fast end (1 race in 10 is faster)</span>
             <span>Faster is to the right</span>
           </div>
 
@@ -352,7 +352,7 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
                           <div className="absolute inset-x-0 top-2 h-1 rounded bg-line" />
                           <div className="absolute top-1.5 h-2 rounded-sm bg-[#3A4654]" style={{ left: `${x(slow)}%`, width: `${x(fast) - x(slow)}%` }} />
                           <div className="absolute top-1 w-3 h-3 rounded-full bg-sky-400 -translate-x-1/2" style={{ left: `${x(slow)}%` }} />
-                          <div className="absolute top-1 w-3 h-3 rounded-full bg-red-400 -translate-x-1/2" style={{ left: `${x(fast)}%` }} />
+                          <div className="absolute top-1 w-3 h-3 rounded-full bg-bad -translate-x-1/2" style={{ left: `${x(fast)}%` }} />
                           <div className="absolute top-1 w-3 h-3 rounded-full bg-mint -translate-x-1/2" style={{ left: `${x(d.timeSec)}%` }} />
                         </div>
                       </td>
@@ -446,7 +446,7 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
                             {edge == null ? (
                               <span className={MUTED}>No odds entered</span>
                             ) : (
-                              <span className={edge > 1.05 ? "text-mint" : edge < 0.95 ? "text-red-400" : MUTED}>
+                              <span className={edge > 1.05 ? "text-mint" : edge < 0.95 ? "text-bad" : MUTED}>
                                 {edge > 1.05 ? "Underrated" : edge < 0.95 ? "Overrated" : "About right"} · returns {edge.toFixed(2)} per 1 staked
                               </span>
                             )}

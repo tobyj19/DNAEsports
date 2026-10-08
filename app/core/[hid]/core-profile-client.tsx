@@ -41,7 +41,7 @@ export default function CoreProfileClient({ info, initialMode }: { info: CoreInf
     <div className="grid grid-cols-1 lg:grid-cols-[15rem_1fr] gap-5">
       <aside className="flex flex-col gap-4 lg:sticky lg:top-4 self-start">
         <Card>
-          <div className="text-xs text-[#9CA6B0]">Core #{info.hid}</div>
+          <div className="text-xs text-muted">Core #{info.hid}</div>
           <div className="text-xl font-bold leading-tight">{info.name}</div>
           {info.vaultName && <div className="text-sm mt-0.5" style={{ color: accent }}>{info.vaultName}</div>}
         </Card>
@@ -61,7 +61,7 @@ export default function CoreProfileClient({ info, initialMode }: { info: CoreInf
               key={m}
               onClick={() => setMode(m)}
               className={`relative z-10 flex flex-col items-center py-2 rounded-xl text-xs capitalize transition-colors ${
-                mode === m ? "text-white" : "text-[#9CA6B0] hover:text-white"
+                mode === m ? "text-white" : "text-muted hover:text-white"
               }`}
             >
               <span className="text-xl leading-none mb-1">{MODE_ICON[m]}</span>
@@ -76,7 +76,7 @@ export default function CoreProfileClient({ info, initialMode }: { info: CoreInf
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`whitespace-nowrap rounded-xl px-3 py-2 text-left text-sm transition-colors ${
-                tab === t.id ? "bg-white/10 text-white font-medium" : "text-[#9CA6B0] hover:text-white hover:bg-white/[0.04]"
+                tab === t.id ? "bg-white/10 text-white font-medium" : "text-muted hover:text-white hover:bg-white/[0.04]"
               }`}
             >
               {t.label}
@@ -86,7 +86,7 @@ export default function CoreProfileClient({ info, initialMode }: { info: CoreInf
 
         <Notes hid={info.hid} />
 
-        <div className="flex flex-col gap-1 text-xs text-[#9CA6B0]">
+        <div className="flex flex-col gap-1 text-xs text-muted">
           <Link href="/core-search" className="hover:text-white">← Back to Core Search</Link>
           <a href={`${OFFICIAL_URL}/${info.hid}`} target="_blank" rel="noreferrer" className="hover:text-white">
             Open on DNA Racing ↗
@@ -121,7 +121,7 @@ function Hero({ info, accent }: { info: CoreInfo; accent: string }) {
 
   return (
     <section className="relative overflow-hidden rounded-2xl border border-white/[0.08] p-5 sm:p-6"
-      style={{ background: `linear-gradient(135deg, ${accent}22 0%, rgba(18,22,28,0.9) 45%, rgba(11,13,16,1) 100%)` }}
+      style={{ background: `linear-gradient(135deg, ${accent}22 0%, rgba(11,17,26,0.92) 45%, rgba(5,7,13,1) 100%)` }}
     >
       <div
         className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full blur-3xl opacity-40"
@@ -155,7 +155,7 @@ function Hero({ info, accent }: { info: CoreInfo; accent: string }) {
         </div>
 
         {info.mintedAt && (
-          <p className="mt-4 text-xs text-[#9CA6B0]">
+          <p className="mt-4 text-xs text-muted">
             Minted {new Date(info.mintedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}
             {mintedDaysAgo != null && ` · ${mintedDaysAgo.toLocaleString()} days ago`}
           </p>
@@ -190,7 +190,7 @@ function Overview({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acce
           <Ring label="Adj. Odds" value={m.adjOddsPct} color="#FACC15" />
         </div>
         {m.powerPct == null && (
-          <p className="mt-2 text-center text-xs text-[#9CA6B0]">Not enough {mode} races yet for power stats.</p>
+          <p className="mt-2 text-center text-xs text-muted">Not enough {mode} races yet for power stats.</p>
         )}
       </Card>
 
@@ -230,10 +230,10 @@ function Overview({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acce
               </div>
             ) : (
               <div>
-                <div className="flex items-center gap-2 text-sm font-semibold text-[#9CA6B0]">
-                  <span className="h-2 w-2 rounded-full bg-[#9CA6B0]" /> Not listed
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted">
+                  <span className="h-2 w-2 rounded-full bg-muted" /> Not listed
                 </div>
-                <div className="text-xs text-[#9CA6B0]">Not on the market</div>
+                <div className="text-xs text-muted">Not on the market</div>
               </div>
             )}
             <a
@@ -254,7 +254,7 @@ function Overview({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acce
           <Card title="Splices">
             <div className="flex items-baseline gap-2">
               <span className="text-4xl font-extrabold tabular-nums" style={{ color: accent }}>{s.lifeSplices}</span>
-              <span className="text-[#9CA6B0]">/ {s.maxLifeSplices ?? "∞"} lifetime</span>
+              <span className="text-muted">/ {s.maxLifeSplices ?? "∞"} lifetime</span>
             </div>
             <div className="mt-3 border-t border-white/[0.06] pt-3 text-sm">
               {s.inArena ? (
@@ -263,8 +263,8 @@ function Overview({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acce
                   {s.arenaPriceUsd != null && <span className="text-white"> · ${s.arenaPriceUsd.toFixed(2)}</span>}
                 </span>
               ) : (
-                <span className="flex items-center gap-2 font-medium text-red-400">
-                  <span className="h-2 w-2 rounded-full bg-red-400" /> Not in arena
+                <span className="flex items-center gap-2 font-medium text-bad">
+                  <span className="h-2 w-2 rounded-full bg-bad" /> Not in arena
                 </span>
               )}
             </div>
@@ -275,7 +275,7 @@ function Overview({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acce
               <span className="text-4xl font-extrabold tabular-nums" style={{ color: accent }}>
                 {Math.max(0, s.cycleMax - s.cycleUsed)}
               </span>
-              <span className="text-[#9CA6B0]">/ {s.cycleMax} splices left this cycle</span>
+              <span className="text-muted">/ {s.cycleMax} splices left this cycle</span>
             </div>
             {s.cycleResets && (
               <div className="mt-3 border-t border-white/[0.06] pt-3">
@@ -289,7 +289,7 @@ function Overview({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acce
                     }}
                   />
                 </div>
-                <div className="mt-2 text-xs text-[#9CA6B0]">
+                <div className="mt-2 text-xs text-muted">
                   {cycleProgress ? `Resets in ${formatDuration(cycleProgress.left)}` : " "}
                 </div>
               </div>
@@ -310,11 +310,11 @@ function AssetTile({ kind, name, detail, accent }: { kind: string; name: string 
         background: name ? `linear-gradient(135deg, ${accent}1a, transparent)` : "rgba(0,0,0,0.2)",
       }}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: name ? accent : "#9CA6B0" }}>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: name ? accent : "#8B9BB0" }}>
         {kind}
       </div>
-      <div className={`text-sm font-semibold ${name ? "" : "italic text-[#9CA6B0]"}`}>{name ?? "None"}</div>
-      {detail && <div className="text-[11px] capitalize text-[#9CA6B0]">{detail}</div>}
+      <div className={`text-sm font-semibold ${name ? "" : "italic text-muted"}`}>{name ?? "None"}</div>
+      {detail && <div className="text-[11px] capitalize text-muted">{detail}</div>}
     </div>
   );
 }
@@ -337,31 +337,31 @@ function Distances({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acc
       title={`Win rate by distance · ${mode}`}
       right={
         career && (
-          <span className="text-xs text-[#9CA6B0]">
+          <span className="text-xs text-muted">
             Career: {career.races} races · {(career.winPct * 100).toFixed(0)}% wins · {(career.top3Pct * 100).toFixed(0)}% top 3
           </span>
         )
       }
     >
       {rows.length === 0 ? (
-        <p className="text-sm text-[#9CA6B0]">No {mode} races yet.</p>
+        <p className="text-sm text-muted">No {mode} races yet.</p>
       ) : (
         <>
           {best && (
             <p className="mb-3 text-sm">
               Strongest at <span className="font-semibold" style={{ color: accent }}>{best.distance}m</span>
-              <span className="text-[#9CA6B0]">
+              <span className="text-muted">
                 {" "}— {(best.winPct * 100).toFixed(0)}% wins, {(best.top3Pct * 100).toFixed(0)}% top 3 over {best.races} races
               </span>
             </p>
           )}
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={rows} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barGap={2}>
-              <XAxis dataKey="distance" tick={{ fill: "#9CA6B0", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis unit="%" tick={{ fill: "#9CA6B0", fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} />
+              <XAxis dataKey="distance" tick={{ fill: "#8B9BB0", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis unit="%" tick={{ fill: "#8B9BB0", fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} />
               <Tooltip
                 cursor={{ fill: "rgba(255,255,255,0.04)" }}
-                contentStyle={{ backgroundColor: "#12161C", border: "1px solid #232A33", borderRadius: 10 }}
+                contentStyle={{ backgroundColor: "#0B111A", border: "1px solid #1B2533", borderRadius: 10 }}
                 formatter={(v) => `${v}%`}
                 labelFormatter={(label, payload) => {
                   const races = payload?.[0]?.payload?.races;
@@ -372,7 +372,7 @@ function Distances({ info, mode, accent }: { info: CoreInfo; mode: RaceMode; acc
               <Bar dataKey="win" name="Wins" fill={accent} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-          <div className="mt-2 flex gap-4 text-xs text-[#9CA6B0]">
+          <div className="mt-2 flex gap-4 text-xs text-muted">
             <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: accent }} /> Wins</span>
             <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: `${accent}44` }} /> Top 3</span>
           </div>
@@ -387,7 +387,7 @@ function Family({ info }: { info: CoreInfo }) {
     <>
       <Card title="Parents">
         {!info.father && !info.mother ? (
-          <p className="text-sm text-[#9CA6B0]">{info.type === "genesis" ? "Genesis core — no parents." : "No parent data."}</p>
+          <p className="text-sm text-muted">{info.type === "genesis" ? "Genesis core — no parents." : "No parent data."}</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <CoreLink core={info.father} role="Father" />
@@ -395,9 +395,9 @@ function Family({ info }: { info: CoreInfo }) {
           </div>
         )}
       </Card>
-      <Card title="Offspring" right={<span className="text-xs text-[#9CA6B0]">{info.offspring.length}</span>}>
+      <Card title="Offspring" right={<span className="text-xs text-muted">{info.offspring.length}</span>}>
         {info.offspring.length === 0 ? (
-          <p className="text-sm text-[#9CA6B0]">No offspring yet.</p>
+          <p className="text-sm text-muted">No offspring yet.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {info.offspring.map((c) => (
@@ -413,7 +413,7 @@ function Family({ info }: { info: CoreInfo }) {
 function CoreLink({ core, role }: { core: CoreRef | null; role?: string }) {
   if (!core) {
     return (
-      <div className="rounded-xl border border-white/[0.07] bg-black/20 p-3 text-sm text-[#9CA6B0]">
+      <div className="rounded-xl border border-white/[0.07] bg-black/20 p-3 text-sm text-muted">
         {role && <div className="text-[10px] font-semibold uppercase tracking-[0.14em]">{role}</div>}
         Unknown
       </div>
@@ -425,12 +425,12 @@ function CoreLink({ core, role }: { core: CoreRef | null; role?: string }) {
       href={`/core/${core.hid}`}
       className="group rounded-xl border border-white/[0.07] bg-black/20 p-3 transition-colors hover:border-white/20 hover:bg-white/[0.04]"
     >
-      {role && <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9CA6B0]">{role}</div>}
+      {role && <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{role}</div>}
       <div className="flex items-center justify-between">
         <span className="font-semibold group-hover:text-white">{core.name}</span>
         <span className="text-xs" style={{ color: accent }}>#{core.hid}</span>
       </div>
-      <div className="text-xs capitalize text-[#9CA6B0]">
+      <div className="text-xs capitalize text-muted">
         {core.element ?? "—"}/{core.type} · {core.gender}
       </div>
     </Link>
@@ -458,13 +458,13 @@ function Notes({ hid }: { hid: number }) {
   }
 
   return (
-    <Card title="Notes" right={<span className="text-[10px] text-[#9CA6B0]">{text.length}/{NOTES_MAX}</span>}>
+    <Card title="Notes" right={<span className="text-[10px] text-muted">{text.length}/{NOTES_MAX}</span>}>
       <textarea
         value={text}
         onChange={(e) => update(e.target.value.slice(0, NOTES_MAX))}
         placeholder="Private notes about this core — saved in this browser."
         rows={4}
-        className="w-full resize-none rounded-xl border border-white/[0.07] bg-black/20 p-2 text-sm placeholder:text-[#6B7480] focus:border-white/20 focus:outline-none"
+        className="w-full resize-none rounded-xl border border-white/[0.07] bg-black/20 p-2 text-sm placeholder:text-faint focus:border-white/20 focus:outline-none"
       />
     </Card>
   );
@@ -499,13 +499,13 @@ function RacesGate({ state, children }: { state: ReturnType<typeof useCoreRaces>
   if (state.error) {
     return (
       <Card>
-        <p className="text-sm text-red-400 mb-2">{state.error}</p>
+        <p className="text-sm text-bad mb-2">{state.error}</p>
         <button onClick={state.retry} className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-white/5">
           Retry
         </button>
       </Card>
     );
   }
-  if (!state.data) return <Card><p className="text-sm text-[#9CA6B0]">Loading race history…</p></Card>;
+  if (!state.data) return <Card><p className="text-sm text-muted">Loading race history…</p></Card>;
   return <>{children(state.data)}</>;
 }
