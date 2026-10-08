@@ -159,7 +159,7 @@ export default function DiscoveryClient({ cores, builtAt }: { cores: EsportsCore
 
         <PowerProfileSummary winTop25Avg={winTop25Avg} teamScoreTop25Avg={teamScoreTop25Avg} poolAvg={poolAvg} />
 
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div className="grid gap-8">
           <LeaderboardTable title="Top 25 — Core Win %" entries={winLeaderboard} metric="win_p" />
           <LeaderboardTable title="Top 25 — Team Score %" entries={teamScoreLeaderboard} metric="team_win_p" />
         </div>

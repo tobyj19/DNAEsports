@@ -66,7 +66,7 @@ export default function MapFitPage() {
             <tr className="bg-panel text-left text-muted">
               <th className="px-3 py-2 font-medium sticky left-0 bg-panel">Core</th>
               {RACE_TYPES.map((t) => (
-                <th key={t} className="px-2 py-2 font-medium whitespace-nowrap">
+                <th key={t} className="px-1.5 py-2 text-xs font-medium leading-tight">
                   {t}
                 </th>
               ))}
@@ -81,11 +81,11 @@ export default function MapFitPage() {
                     value={core.coreName}
                     onChange={(e) => updateCoreName(i, e.target.value)}
                     placeholder="Core name"
-                    className="bg-panel border border-line rounded px-2 py-1 w-32 text-sm"
+                    className="bg-panel border border-line rounded px-2 py-1 w-28 text-sm"
                   />
                 </td>
                 {RACE_TYPES.map((t) => (
-                  <td key={t} className="px-2 py-2">
+                  <td key={t} className="px-1.5 py-2">
                     <input
                       type="number"
                       min={0}
@@ -93,7 +93,7 @@ export default function MapFitPage() {
                       value={core.winRates[t] !== undefined ? Math.round(core.winRates[t]! * 100) : ""}
                       onChange={(e) => updateRate(i, t, e.target.value)}
                       placeholder="%"
-                      className="bg-panel border border-line rounded px-2 py-1 w-16 text-sm"
+                      className="bg-panel border border-line rounded px-1.5 py-1 w-14 text-sm"
                     />
                   </td>
                 ))}
