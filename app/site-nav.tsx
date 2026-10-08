@@ -53,7 +53,7 @@ export default function SiteNav() {
       <nav className="max-w-5xl mx-auto px-6 py-4 flex flex-wrap items-center gap-x-6 gap-y-3">
         <Link href="/" aria-label="DNA Analytics home" className="shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/logo-horizontal.svg" alt="DNA Analytics" className="h-8 w-auto" />
+          <img src="/brand/logo-horizontal.svg" alt="DNA Analytics" className="h-10 w-auto" />
         </Link>
 
         {section && (
