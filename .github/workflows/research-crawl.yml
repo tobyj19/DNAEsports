@@ -1,0 +1,36 @@
+name: Research crawl
+
+# Collects the breeding / calibration research data on GitHub's servers, so no
+# local computer has to stay on. Run it from the Actions tab ("Run workflow").
+# Results are attached to the run as the "research-data" download (kept 90 days).
+# Takes ~3-4 hours: two passes over every core's race history.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bulk pulls (lineage, official ratings, career results)
+        shell: pwsh
+        run: ./research/fetch-bulk.ps1 -OutDir "${{ github.workspace }}/data"
+
+      - name: Race times per mode and distance (all cores)
+        shell: pwsh
+        run: ./research/mode-crawl.ps1 -OutDir "${{ github.workspace }}/data/mode-full" -Threads 10
+
+      - name: Race results with gates, stars, payout (all cores)
+        shell: pwsh
+        run: ./research/star-crawl.ps1 -OutDir "${{ github.workspace }}/data/star-full" -Threads 10
+
+      - name: Save data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-data
+          path: data
+          retention-days: 90
