@@ -37,11 +37,13 @@ export interface PairPrediction {
   adj: TraitPrediction;
   win: TraitPrediction; // 0-1
   place: TraitPrediction; // 0-1
-  /** Expected Breeding Score of the offspring, as a percentile among rated cores, and its grade. */
+  /** Expected overall breeder score of the offspring, as a percentile among rated cores, and its grade. */
   breedingScore: number;
   grade: Grade;
   /** Chance the offspring's overall racing stats land in the top 10% / 30% / half of rated cores. */
   odds: { top10: number; top30: number; top50: number };
+  /** Jackpot: chance the offspring's PWR beats both parents' (from real offspring outcomes). Null unless both parents have a PWR. */
+  jackpot: number | null;
   /** "limited" when a parent has no data in this mode (treated as average). */
   confidence: "good" | "limited";
 }
@@ -85,12 +87,26 @@ function percentileOf(quantiles: number[], v: number): number {
 const AVERAGE: ScoreParts = { pwr: 0, adj: 0, win: 0, place: 0, beats: 0 };
 
 /** Predicts from two parents' best estimates. Pure maths — callers supply x (or null). */
+/** Share of real offspring whose PWR beat the prediction by at least `need` (empirical, heavy-tailed). */
+function chanceResidAtLeast(quantiles: number[], need: number): number {
+  let lo = 0;
+  let hi = quantiles.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (quantiles[mid] < need) lo = mid + 1;
+    else hi = mid;
+  }
+  return Math.max(0, Math.min(1, 1 - lo / (quantiles.length - 1)));
+}
+
 export function predictFromX(
   mode: RaceMode,
   father: ParentMeta,
   mother: ParentMeta,
   fx: ScoreParts | null,
-  mx: ScoreParts | null
+  mx: ScoreParts | null,
+  /** Parents' official PWR (0-100), for the jackpot chance. */
+  parentsPwr: (number | null | undefined)[] = []
 ): PairPrediction {
   const m = getPairModel(mode);
   const w = getWeights(mode);
@@ -113,30 +129,40 @@ export function predictFromX(
     return 1 - normCdf((q - overall) / m.compositeResidSd);
   };
 
+  const pwr = trait("pwr");
+  const known = parentsPwr.filter((v): v is number => typeof v === "number" && v > 0);
+  const jackpot = known.length === 2 ? chanceResidAtLeast(m.pwrResidQuantiles, Math.max(...known) - pwr.mean) : null;
+
   return {
     element: offspringElement(father.element, mother.element),
     type: offspringType(father.type, mother.type),
     fno: father.fno + mother.fno,
-    pwr: trait("pwr"),
+    pwr,
     adj: trait("adj"),
     win: trait("win"),
     place: trait("place"),
     breedingScore,
     grade: gradeFor(breedingScore),
     odds: { top10: chanceAbove(90), top30: chanceAbove(70), top50: chanceAbove(50) },
+    jackpot,
     confidence: fx && mx ? "good" : "limited",
   };
 }
 
-export function predictPair(mode: RaceMode, father: ParentMeta, mother: ParentMeta): PairPrediction {
-  return predictFromX(mode, father, mother, getBestX(father.hid, mode), getBestX(mother.hid, mode));
+export function predictPair(
+  mode: RaceMode,
+  father: ParentMeta,
+  mother: ParentMeta,
+  parentsPwr: (number | null | undefined)[] = []
+): PairPrediction {
+  return predictFromX(mode, father, mother, getBestX(father.hid, mode), getBestX(mother.hid, mode), parentsPwr);
 }
 
 /** Each parent's own grades in a mode, for display next to a prediction. */
 export function parentGrades(hid: number, mode: RaceMode) {
   const s = getBreederScores(hid).modes[mode];
   return {
-    breeding: s?.breeding ? { grade: s.breeding.grade, score: s.breeding.score } : null,
+    overall: s?.overall ? { grade: s.overall.grade, score: s.overall.score } : null,
     rating: s?.rating ? { grade: s.rating.grade, score: s.rating.score, offspring: s.rating.ratedOffspring } : null,
   };
 }

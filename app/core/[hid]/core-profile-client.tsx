@@ -208,7 +208,7 @@ function Overview({ info, mode, accent, breeder }: { info: CoreInfo; mode: RaceM
         )}
       </Card>
 
-      <BreederScoreCards scores={breeder} mode={mode} />
+      <BreederScoreCards scores={breeder} mode={mode} founder={info.type === "genesis"} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Meter
@@ -423,7 +423,7 @@ function Family({ info, mode, breeder, tiers }: { info: CoreInfo; mode: RaceMode
 
   return (
     <>
-      <BreederScoreCards scores={breeder} mode={mode} />
+      <BreederScoreCards scores={breeder} mode={mode} founder={info.type === "genesis"} />
       <Card title={`Parents · ${mode}`}>
         {!info.father && !info.mother ? (
           <p className="text-sm text-muted">{info.type === "genesis" ? "Genesis core — no parents." : "No parent data."}</p>

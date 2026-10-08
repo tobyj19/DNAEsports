@@ -239,7 +239,7 @@ export async function findPairs(req: FinderRequest): Promise<FinderResponse> {
       const cost = f.costUsd + m.costUsd;
       if (req.maxCostUsd != null && cost > req.maxCostUsd) continue;
       checked++;
-      const p = predictFromX(req.mode, f, m, x(f.hid), x(m.hid));
+      const p = predictFromX(req.mode, f, m, x(f.hid), x(m.hid), [f.stats?.pwr, m.stats?.pwr]);
       if (req.element && p.element !== req.element) continue;
       if (req.type && p.type !== req.type) continue;
       pairs.push({ father: f, mother: m, prediction: p, costUsd: cost });

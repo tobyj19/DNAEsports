@@ -47,6 +47,9 @@ GRADES = [("S+", 99.5), ("S", 99), ("S-", 98), ("A+", 96), ("A", 93), ("A-", 90)
           ("B+", 83), ("B", 77), ("B-", 70), ("C+", 57), ("C", 43), ("C-", 30),
           ("D+", 20), ("D", 10), ("D-", 0)]  # min percentile
 BREEDING_SOURCES = ["Official ratings", "Early results + parents", "Early results", "Parents only"]
+OWN_SOURCES = ["Official ratings", "Early results"]
+OVERALL_BASIS = ["offspring", "own stats", "bloodline and early results", "bloodline"]
+GP_WEIGHT = 0.25  # grandparents' share of the lineage score (parents 0.75): measured weight ~1/3 of parents
 RATING_CONF = ["Proven", "Some evidence", "Early read"]
 GENERATED = "2026-10-08"  # date of the research crawl these scores come from
 RESULTS_K = 30            # pseudo-races of mode-average results mixed into each core
@@ -220,7 +223,10 @@ def pair_model(mode, s, lineage):
         "residSd": {c: round(RESID_INFLATE * sd(res[c]), 4) for c in COMPONENTS},
         "compositeResidSd": round(RESID_INFLATE * sd(comp_res), 4),
         # 201 quantiles: Breeding Score totals of rated cores (-> grade), and their own overall stats (-> "top x%" odds)
-        "breedingQuantiles": q(sorted(s["breeding_total"][h] for h in s["official"] if h in s["breeding_total"])),
+        # Overall (best-estimate) totals of rated cores: a newborn's overall is its parents' average best estimate
+        "breedingQuantiles": q(sorted(s["best_total"][h] for h in s["official"] if h in s["best_total"])),
+        # real offspring PWR minus predicted PWR (heavy-tailed: ~2.6% land 8+ away), for jackpot odds
+        "pwrResidQuantiles": q(sorted(RESID_INFLATE * r * s["stats"]["pwr"][1] for r in res["pwr"])),
         "overallQuantiles": q(sorted(sum(W[c] * own[h].get(c, 0.0) for c in COMPONENTS) / 100 for h in official)),
     }
 
@@ -303,17 +309,54 @@ def main():
             vals = sorted(s["breeding"][h][c] for h in s["official"] if h in s["breeding"])
             trait_cuts[mode][c] = [round(vals[int(q * (len(vals) - 1))], 3) for q in (0.2, 0.4, 0.6, 0.8, 0.95)]
         pair_models[mode] = pair_model(mode, s, lineage)
-        bp = percentiles(s["breeding_total"], s["official"])
+        W = WEIGHTS[mode]
+        tot = lambda comp: sum(W[c] * comp.get(c, 0.0) for c in COMPONENTS) / 100
+        h2 = s["h2"]
+        # own stats only: h2 x own z (no parents, no offspring)
+        own_bv = {h: {c: h2[c] * z for c, z in zs.items()} for h, zs in s["own"].items()}
+        own_total = {h: tot(v) for h, v in own_bv.items()}
+        # lineage: parents' best estimates (0.75) + grandparents' (0.25); genesis = founder
+        best_total = s["best_total"]
+
+        def lineage_value(h):
+            l = lineage.get(h)
+            if not l or not l["father"]:
+                return None
+            ps = [l["father"], l["mother"]]
+            pv = [best_total[x] for x in ps if x in best_total]
+            if not pv:
+                return None
+            gps = [g for x in ps if lineage.get(x) and lineage[x]["father"] for g in (lineage[x]["father"], lineage[x]["mother"])]
+            gv = [best_total[g] for g in gps if g in best_total]
+            v = sum(pv) / len(pv)
+            return (1 - GP_WEIGHT) * v + GP_WEIGHT * sum(gv) / len(gv) if gv else v
+
+        lin_total = {h: v for h in lineage if (v := lineage_value(h)) is not None}
+        ref = list(s["official"])
+        op = percentiles(own_total, ref)
+        lp = percentiles(lin_total, ref)
+        vp = percentiles(best_total, ref)
         n_off = s["n_off"]
         rp = percentiles(s["rating_total"], [h for h in s["rating_total"] if n_off.get(h, 0) >= 3])
-        for h in set(bp) | set(rp):
+        bp = vp  # summary/print compatibility below
+
+        for h in set(vp) | set(rp):
+            if h not in s["breeding"] and h not in rp:
+                continue  # no own data, no scored parents, no offspring: nothing to say
             e = {}
-            if h in bp:
-                e["b"] = [round(bp[h], 1), s["source"][h]] + [round(WEIGHTS[mode][c] * s["breeding"][h][c] / 100, 2) or 0 for c in COMPONENTS]
+            n = n_off.get(h, 0)
+            l = lineage.get(h, {})
+            par = [l.get("father"), l.get("mother")] if l.get("father") else []
+            if h in own_bv:
+                e["o"] = [round(op[h], 1), 0 if h in s["official"] else 1] + [round(W[c] * own_bv[h].get(c, 0.0) / 100, 2) or 0 for c in COMPONENTS]
+            if h in lp:
+                e["l"] = [round(lp[h], 1)] + [round(vp[x], 1) if x in vp else None for x in par]
             if h in rp:
-                n = n_off.get(h, 0)
                 e["r"] = [round(rp[h], 1), 0 if n >= 8 else 1 if n >= 3 else 2, n] + \
-                         [round(WEIGHTS[mode][c] * s["rating"][h][c] / 100, 2) or 0 for c in COMPONENTS]
+                         [round(W[c] * s["rating"][h][c] / 100, 2) or 0 for c in COMPONENTS]
+            if h in vp:
+                basis = 0 if n >= 4 else 1 if h in s["official"] else 2 if h in s["own"] else 3
+                e["v"] = [round(vp[h], 1), basis]
             if s["best"].get(h) is not None:
                 # best estimate per trait (unweighted), for predicting a pair's offspring
                 e["x"] = [round(s["best"][h][c], 3) or 0 for c in COMPONENTS]
@@ -321,30 +364,35 @@ def main():
         gen = [h for h, l in lineage.items() if l["type"] == "genesis"]
         summary[mode] = {
             "h2": {c: round(v, 2) for c, v in s["h2"].items()},
-            "breeding_scored": len(bp), "breeding_sources": {BREEDING_SOURCES[i]: sum(1 for h in bp if s["source"][h] == i) for i in range(4)},
+            "overall_scored": sum(1 for h in out if "v" in out[h].get(mode, {})),
+            "overall_basis": {OVERALL_BASIS[i]: sum(1 for h in out if out[h].get(mode, {}).get("v", [0, -1])[1] == i) for i in range(4)},
+            "own_scored": len(op), "lineage_scored": len(lp),
             "rating_scored": len(rp), "rating_conf": {RATING_CONF[i]: sum(1 for h in rp if out[h][mode]["r"][1] == i) for i in range(3)},
-            "breeding_grades": {g: sum(1 for h in s["official"] if h in bp and grade(bp[h]) == g) for g, _ in GRADES},
-            "genesis": {"total": len(gen), "breeding": sum(1 for h in gen if h in bp), "rating": sum(1 for h in gen if h in rp)},
+            "overall_grades": {g: sum(1 for h in s["official"] if h in bp and grade(bp[h]) == g) for g, _ in GRADES},
+            "genesis": {"total": len(gen), "overall": sum(1 for h in gen if "v" in out[h].get(mode, {})), "rating": sum(1 for h in gen if h in rp)},
         }
         print(f"\n=== {mode}")
         print(json.dumps(summary[mode]))
         top = sorted((h for h in rp if n_off.get(h, 0) >= 8), key=lambda h: -s["rating_total"][h])[:6]
         for h in top:
             print(f"  Breeder Rating {grade(rp[h]):2} {rp[h]:5.1f}  core {h:6} {lineage[h]['type']:8} {n_off[h]:3} offspring"
-                  f" | Breeding Score {grade(bp[h]) if h in bp else '-':2} {bp.get(h, float('nan')):5.1f}")
-        for h in (155, 25607, 5):
-            print(f"  e.g. core {h}: Breeding {grade(bp[h]) + ' %.1f' % bp[h] if h in bp else '-'}"
-                  f" | Rating {grade(rp[h]) + ' %.1f' % rp[h] if h in rp else '-'} ({n_off.get(h, 0)} offspring)")
+                  f" | Overall {grade(bp[h]) if h in bp else '-':2} {bp.get(h, float('nan')):5.1f}")
+        for h in (155, 253, 25607, 5):
+            e = out[h].get(mode, {})
+            g = lambda k: f"{grade(e[k][0])} {e[k][0]}" if k in e else "-"
+            print(f"  e.g. core {h}: overall {g('v')} | own {g('o')} | lineage {g('l')} | track {g('r')} ({n_off.get(h, 0)} offspring)")
     if a.out:
         with open(a.out, "w") as f:
             json.dump({"weights": WEIGHTS, "grades": GRADES, "summary": summary, "cores": out}, f)
         print(f"\nwrote {a.out}")
     if a.site:
-        # cores[hid][mode] = { b: [pct, source#, 5 weighted parts], r: [pct, confidence#, offspring, 5 weighted parts] }
+        # cores[hid][mode] = { v: [overall pct, basis#], o: [own pct, ownSource#, 5 weighted parts],
+        #                      l: [lineage pct, sire overall pct|null, dam overall pct|null],
+        #                      r: [track pct, confidence#, offspring, 5 weighted parts], x: [5 best estimates] }
         # traitCuts[mode][trait] = unweighted value at p20/p40/p60/p80/p95 of rated cores
         # x = best estimate per trait (unweighted); pairModel[mode] = see pair_model()
         with open(a.site, "w") as f:
-            json.dump({"generated": GENERATED, "weights": WEIGHTS, "grades": GRADES, "breedingSources": BREEDING_SOURCES,
+            json.dump({"generated": GENERATED, "weights": WEIGHTS, "grades": GRADES, "ownSources": OWN_SOURCES, "overallBasis": OVERALL_BASIS,
                        "ratingConfidence": RATING_CONF, "traitCuts": trait_cuts, "pairModel": pair_models, "cores": out}, f, separators=(",", ":"))
         print(f"wrote {a.site} ({os.path.getsize(a.site) // 1024} KB)")
 

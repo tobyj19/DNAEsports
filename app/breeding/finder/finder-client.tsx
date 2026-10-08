@@ -337,7 +337,7 @@ function ParentTile({ c, role, mode }: { c: Candidate; role: "Father" | "Mother"
         {c.element} · {c.type} · F{c.fno}
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-1">
-        {c.grades.breeding && <GradeChip grade={c.grades.breeding.grade} />}
+        {c.grades.overall && <GradeChip grade={c.grades.overall.grade} />}
         {c.grades.rating && <GradeChip grade={c.grades.rating.grade} prefix="R" />}
         <span className="text-[11px] text-soft">
           {c.priceLabel ?? "Yours"}
@@ -366,7 +366,7 @@ function PairRow({ p, rank, mode }: { p: PairResult; rank: number; mode: RaceMod
           <div
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl font-black"
             style={{ color: gc, background: `${gc}1A`, boxShadow: `inset 0 0 0 1px ${gc}66` }}
-            title="Expected breeding grade of the offspring"
+            title="Expected overall breeder grade of the offspring"
           >
             {pr.grade}
           </div>
@@ -380,6 +380,12 @@ function PairRow({ p, rank, mode }: { p: PairResult; rank: number; mode: RaceMod
                 ({pr.pwr.lo.toFixed(0)}–{pr.pwr.hi.toFixed(0)})
               </span>{" "}
               · top-10% racer <span className="font-semibold text-white">{Math.round(pr.odds.top10 * 100)}%</span>
+              {pr.jackpot != null && (
+                <>
+                  {" "}
+                  · jackpot <span className="font-semibold text-amber">{Math.round(pr.jackpot * 100)}%</span>
+                </>
+              )}
             </div>
             <div className="text-muted">
               Cost <span className="text-white">{p.costUsd > 0 ? `$${p.costUsd.toFixed(0)}` : "free (your cores)"}</span>

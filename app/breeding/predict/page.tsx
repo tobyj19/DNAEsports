@@ -68,7 +68,7 @@ function Notice({ children }: { children: React.ReactNode }) {
 
 function Result({ father, mother, mode }: { father: CoreInfo; mother: CoreInfo; mode: RaceMode }) {
   const meta = (c: CoreInfo) => ({ hid: c.hid, name: c.name, element: c.element ?? "", type: c.type, gender: c.gender, fno: c.fno });
-  const p = predictPair(mode, meta(father), meta(mother));
+  const p = predictPair(mode, meta(father), meta(mother), [father.modes[mode].powerPct, mother.modes[mode].powerPct]);
   const genderWarning =
     father.gender !== "male" || mother.gender !== "female"
       ? `Heads up: the father should be male and the mother female (${father.name} is ${father.gender}, ${mother.name} is ${mother.gender}).`
@@ -117,7 +117,7 @@ function ParentCard({ core, role, color, mode }: { core: CoreInfo; role: string;
         {core.element} · {core.type} · F{core.fno} · {core.gender}
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
-        {g.breeding ? <GradeChip grade={g.breeding.grade} prefix="Potential" /> : <span className="text-xs text-faint">No potential grade</span>}
+        {g.overall ? <GradeChip grade={g.overall.grade} prefix="Overall" /> : <span className="text-xs text-faint">No breeder score yet</span>}
         {g.rating && <GradeChip grade={g.rating.grade} prefix={`Track record · ${g.rating.offspring} off.`} />}
       </div>
       <div className="mt-3 grid grid-cols-4 gap-2 text-xs">
@@ -168,17 +168,18 @@ function OffspringCard({ p, father, mother, mode }: { p: PairPrediction; father:
             {p.grade}
           </div>
           <div>
-            <div className="text-[11px] uppercase tracking-[0.14em] text-muted">Expected breeding grade</div>
+            <div className="text-[11px] uppercase tracking-[0.14em] text-muted">Expected breeder grade</div>
             <div className="text-sm">
               Better than <span className="font-semibold text-white">{Math.min(99, Math.floor(p.breedingScore))}%</span> of rated{" "}
               {mode} cores
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <Odds label="Races in the top 10%" value={pct(p.odds.top10)} />
           <Odds label="Top 30%" value={pct(p.odds.top30)} />
           <Odds label="Top half" value={pct(p.odds.top50)} />
+          {p.jackpot != null && <Odds label="Jackpot: beats both parents' PWR" value={pct(p.jackpot)} accent />}
         </div>
       </div>
 
@@ -221,6 +222,8 @@ function OffspringCard({ p, father, mother, mode }: { p: PairPrediction; father:
       )}
       <p className="mt-2 text-[11px] text-faint">
         Element, type and F# follow fixed game rules. Win % and place % depend a lot on which races a core enters, so their ranges are wide.
+        Jackpot odds come from how often real offspring out-PWR both parents — about 1 in 40 offspring lands 8+ PWR away from its
+        prediction, two-thirds of them above.
       </p>
     </section>
   );
@@ -230,10 +233,10 @@ function Pill({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5 font-medium text-white">{children}</span>;
 }
 
-function Odds({ label, value }: { label: string; value: string }) {
+function Odds({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2">
-      <div className="text-xl font-bold tabular-nums">{value}</div>
+    <div className={`rounded-xl border px-3 py-2 ${accent ? "border-amber/40 bg-amber/10" : "border-white/[0.06] bg-black/20"}`}>
+      <div className={`text-xl font-bold tabular-nums ${accent ? "text-amber" : ""}`}>{value}</div>
       <div className="text-[11px] text-muted">{label}</div>
     </div>
   );

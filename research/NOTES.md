@@ -80,6 +80,23 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
   lines, so "preferred" often lands on 900/1000 or 2200/2300 — trust the lean/type more
   than the exact metre figure unless the profile actually curves.
 
+### Overall / Own stats / Lineage / Track record (Oct 8, replaces the potential vs track record card)
+
+- **Overall** = best estimate (own stats + bloodline + offspring, offspring weight grows with
+  count) — the headline grade, used for badges and the Pair Finder. Basis chip: offspring
+  (4+ rated), own stats, bloodline and early results, or bloodline.
+- **Own stats** = h2 × own z only. **Lineage** = 0.75 × parents' best + 0.25 × grandparents'
+  best (genesis = Founder). Tested: grandparents add a little (R² 0.569 → 0.580, weight ~1/3 of
+  parents); great-grandparents nothing. **Track record** unchanged.
+- No grandparent "rolls": residual after parents doesn't follow grandparents (r −0.01 avg,
+  −0.03 best, +0.06 worst); element/type are 100% from parents; only colour rolls (game text:
+  33% each parent, 33% random). Random surprises exist: ~2.6% of offspring land 8+ PWR off the
+  prediction, two-thirds above.
+- **Jackpot** = chance the offspring out-PWRs both parents, from empirical residual quantiles
+  (`pwrResidQuantiles`). Calibration: predicted 1.5/7/12/17/32% → actual 0.6/4/10/17/37%.
+  Needs both parents' PWR; not offered as a finder sort (weak parents would win).
+- Site file fields: v (overall), o (own), l (lineage + sire/dam), r (track), x (best).
+
 ### Pair predictor + Pair Finder (Oct 8)
 
 - Fixed rules (lineage, ~15k offspring): element = dominant of water > earth > fire > metal;
