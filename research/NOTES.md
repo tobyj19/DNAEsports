@@ -50,6 +50,36 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
 - **Stars**: blue = won most pre-race sims, gold = most top-3 in sims, both possible.
   Star race-results crawl (`star-full`) is for the "beats its sims" metric.
 
+### Star analysis (Oct 8, 2026 crawl — `star-analysis.py --dir research-data --out research-data/star.json`)
+
+- **Stars predict results, about evenly across modes.** 4 runners: no star ~20% win,
+  gold ~25%, blue ~35%, both ~41% (base 25%). 6 runners: 14 / 19 / 25 / 28% (base 16.7%).
+  Blue is the win signal, gold the top-3 signal (4 runners top-3: none 70%, blue 78%,
+  gold 86%, both 88%). Starless cores sit just under the 1/runners baseline.
+- **"Beats sims"** = actual wins ÷ expected wins (league rate for that mode × runners ×
+  star), shrunk toward 1.0 with 40 pseudo-races, 30+ races needed. Spread p10/p50/p90
+  ≈ 0.73 / 0.99 / 1.19 in every mode.
+- **It overlaps PWR a lot** (bike r 0.44, car 0.22, horse 0.28) and star rates track PWR
+  even more (blue rate vs PWR r ~0.56–0.59) → star rates on their own double-count PWR.
+- **After removing PWR**, beats-sims is still partly inherited on bike (mid-parent r 0.24),
+  weakly on horse (0.13), barely on car (0.07). It also correlates with VAR
+  (r 0.34–0.44): volatile cores outrun what their stars suggest.
+
+### Distance profile (Oct 8 — `distance-profile.py --dir research-data --out research-data/distance.json`)
+
+- Per core: time vs field average at each distance (900–2300m), relative to the core's
+  own average, shrunk (8 pseudo-races) → weighted line = **lean** (% per 1000m; negative
+  = relatively faster as distance grows = stayer) and quadratic → **preferred distance**.
+  Confidence by races at both ends (high = 20+ short and 20+ long).
+- **Real and repeatable**: lean from paid races vs from free races (disjoint) r 0.40 bike /
+  0.31 car / 0.34 horse — each half is small, full-sample reliability ≈ 0.5–0.6.
+- **Matches results independently**: time lean vs wins-vs-sims (long ÷ short) r −0.54 / −0.54 / −0.53.
+- **Inherited**: mid-parent r 0.56 bike, 0.43 car, 0.45 horse.
+- Size: p10/p90 lean ≈ ±0.45%/km, i.e. ~0.5% of race time between 1000m and 2200m.
+- Confident bike cores: 36% sprint / 38% mid / 26% stayer. Many profiles are straight
+  lines, so "preferred" often lands on 900/1000 or 2200/2300 — trust the lean/type more
+  than the exact metre figure unless the profile actually curves.
+
 ## Agreed Breeder Score plan (pending final weights)
 
 - Per mode. 0–100 = percentile of breeding value. Tiers: S top 2% / A 8% / B 20% /
@@ -65,7 +95,7 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
 
 ## Next steps
 
-1. Run the crawl (or download its data), then: star chart (win % by gates × star),
-   per-core star rates, "beats sims".
+1. ~~Run the crawl, star chart, per-core star rates, "beats sims"~~ — done Oct 8
+   (see Star analysis above; per-core values in `research-data/star.json`).
 2. Propose final weights to the owner for approval.
 3. Build: Breeder Score card, Family "vs expected", Breeding page rankings + pair predictor.

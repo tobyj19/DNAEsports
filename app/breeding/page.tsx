@@ -5,12 +5,13 @@
 // Breeding Strategy tool for DNA Analytics. Load a vault by wallet address,
 // rank sire/dam pairs against a chosen strategy, and surface predicted
 // offspring quality + ROI. Distance strategies use the Sprint/Mid/Marathon +
-// hybrid classification from lib/distance-strategy.ts, based on the 7 real
-// esports distances (1000-2200m) and a win%/top-3% strength threshold.
+// hybrid classification from lib/distance-strategy.ts, based on each core's
+// finish times vs the field across distances (lean + preferred distance).
 
 import { useMemo, useState } from "react";
 import {
   DISTANCE_CATEGORY_LABELS,
+  describeTimeProfile,
   DISTANCE_STRATEGIES,
   STRATEGY_LABELS,
   rankBreedingPairs,
@@ -509,7 +510,12 @@ function ParentCard({ label, core, showVault }: { label: string; core: Core; sho
       )}
       <div
         className="mt-1 inline-block rounded-full border border-line bg-panel px-2 py-0.5 text-xs text-soft"
-        title={DISTANCE_CATEGORY_LABELS[core.category]}
+        title={
+          core.distanceTime
+            ? `${DISTANCE_CATEGORY_LABELS[core.category]}
+${describeTimeProfile(core.distanceTime)}`
+            : DISTANCE_CATEGORY_LABELS[core.category]
+        }
       >
         {formatCategory(core)}
       </div>

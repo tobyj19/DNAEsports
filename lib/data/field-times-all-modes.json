@@ -1,0 +1,227 @@
+{
+  "bike|1000": {
+    "avgTime": 57.3012,
+    "medianTime": 57.29,
+    "totalRaces": 434151
+  },
+  "bike|1100": {
+    "avgTime": 64.1049,
+    "medianTime": 64.09,
+    "totalRaces": 92614
+  },
+  "bike|1200": {
+    "avgTime": 70.8901,
+    "medianTime": 70.88,
+    "totalRaces": 300453
+  },
+  "bike|1300": {
+    "avgTime": 77.0104,
+    "medianTime": 77.0,
+    "totalRaces": 48886
+  },
+  "bike|1400": {
+    "avgTime": 83.0967,
+    "medianTime": 83.08,
+    "totalRaces": 261184
+  },
+  "bike|1500": {
+    "avgTime": 89.1904,
+    "medianTime": 89.17,
+    "totalRaces": 103556
+  },
+  "bike|1600": {
+    "avgTime": 95.2256,
+    "medianTime": 95.2,
+    "totalRaces": 357767
+  },
+  "bike|1700": {
+    "avgTime": 101.2323,
+    "medianTime": 101.22,
+    "totalRaces": 49415
+  },
+  "bike|1800": {
+    "avgTime": 107.26,
+    "medianTime": 107.25,
+    "totalRaces": 244033
+  },
+  "bike|1900": {
+    "avgTime": 113.1295,
+    "medianTime": 113.11,
+    "totalRaces": 83326
+  },
+  "bike|2000": {
+    "avgTime": 119.3594,
+    "medianTime": 119.32,
+    "totalRaces": 267163
+  },
+  "bike|2100": {
+    "avgTime": 124.9461,
+    "medianTime": 124.9,
+    "totalRaces": 46112
+  },
+  "bike|2200": {
+    "avgTime": 131.4023,
+    "medianTime": 131.34,
+    "totalRaces": 399657
+  },
+  "bike|2300": {
+    "avgTime": 138.2631,
+    "medianTime": 138.21,
+    "totalRaces": 123805
+  },
+  "bike|900": {
+    "avgTime": 50.6243,
+    "medianTime": 50.62,
+    "totalRaces": 117001
+  },
+  "car|1000": {
+    "avgTime": 57.3413,
+    "medianTime": 57.34,
+    "totalRaces": 78020
+  },
+  "car|1100": {
+    "avgTime": 64.0037,
+    "medianTime": 64.0,
+    "totalRaces": 8740
+  },
+  "car|1200": {
+    "avgTime": 70.9632,
+    "medianTime": 70.97,
+    "totalRaces": 46591
+  },
+  "car|1300": {
+    "avgTime": 77.1828,
+    "medianTime": 77.17,
+    "totalRaces": 20368
+  },
+  "car|1400": {
+    "avgTime": 83.1037,
+    "medianTime": 83.09,
+    "totalRaces": 62902
+  },
+  "car|1500": {
+    "avgTime": 89.0435,
+    "medianTime": 89.04,
+    "totalRaces": 9394
+  },
+  "car|1600": {
+    "avgTime": 95.2684,
+    "medianTime": 95.27,
+    "totalRaces": 71629
+  },
+  "car|1700": {
+    "avgTime": 101.034,
+    "medianTime": 101.03,
+    "totalRaces": 8296
+  },
+  "car|1800": {
+    "avgTime": 107.2221,
+    "medianTime": 107.2,
+    "totalRaces": 62635
+  },
+  "car|1900": {
+    "avgTime": 113.5653,
+    "medianTime": 113.54,
+    "totalRaces": 21334
+  },
+  "car|2000": {
+    "avgTime": 119.4836,
+    "medianTime": 119.46,
+    "totalRaces": 46883
+  },
+  "car|2100": {
+    "avgTime": 125.1838,
+    "medianTime": 125.12,
+    "totalRaces": 7707
+  },
+  "car|2200": {
+    "avgTime": 131.499,
+    "medianTime": 131.46,
+    "totalRaces": 70314
+  },
+  "car|2300": {
+    "avgTime": 138.7512,
+    "medianTime": 138.73,
+    "totalRaces": 33318
+  },
+  "car|900": {
+    "avgTime": 50.7275,
+    "medianTime": 50.72,
+    "totalRaces": 34255
+  },
+  "horse|1000": {
+    "avgTime": 57.3579,
+    "medianTime": 57.36,
+    "totalRaces": 110334
+  },
+  "horse|1100": {
+    "avgTime": 64.0654,
+    "medianTime": 64.06,
+    "totalRaces": 9746
+  },
+  "horse|1200": {
+    "avgTime": 70.9415,
+    "medianTime": 70.94,
+    "totalRaces": 51603
+  },
+  "horse|1300": {
+    "avgTime": 77.0249,
+    "medianTime": 77.02,
+    "totalRaces": 16601
+  },
+  "horse|1400": {
+    "avgTime": 83.1121,
+    "medianTime": 83.11,
+    "totalRaces": 95558
+  },
+  "horse|1500": {
+    "avgTime": 89.0084,
+    "medianTime": 89.01,
+    "totalRaces": 7987
+  },
+  "horse|1600": {
+    "avgTime": 95.2068,
+    "medianTime": 95.19,
+    "totalRaces": 89471
+  },
+  "horse|1700": {
+    "avgTime": 101.1467,
+    "medianTime": 101.13,
+    "totalRaces": 9496
+  },
+  "horse|1800": {
+    "avgTime": 107.2923,
+    "medianTime": 107.28,
+    "totalRaces": 89255
+  },
+  "horse|1900": {
+    "avgTime": 113.3986,
+    "medianTime": 113.4,
+    "totalRaces": 15050
+  },
+  "horse|2000": {
+    "avgTime": 119.3977,
+    "medianTime": 119.37,
+    "totalRaces": 64557
+  },
+  "horse|2100": {
+    "avgTime": 125.3186,
+    "medianTime": 125.28,
+    "totalRaces": 9049
+  },
+  "horse|2200": {
+    "avgTime": 131.5028,
+    "medianTime": 131.48,
+    "totalRaces": 104200
+  },
+  "horse|2300": {
+    "avgTime": 138.4139,
+    "medianTime": 138.36,
+    "totalRaces": 29108
+  },
+  "horse|900": {
+    "avgTime": 50.6289,
+    "medianTime": 50.62,
+    "totalRaces": 32892
+  }
+}

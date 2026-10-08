@@ -3,7 +3,7 @@
 // Breeding compatibility engine for DNA Racing cores, targeted at the esports
 // league specifically: stats are bike-mode only (esports races are all bike
 // races) and distance strategies use the classification in distance-strategy.ts
-// (Sprint/Mid/Marathon + hybrids), driven by the 7 real esports distances.
+// (Sprint/Mid/Marathon + hybrids), driven by finish times vs the field at each distance.
 
 import {
   bandToCategory,
@@ -11,11 +11,13 @@ import {
   classifyDistanceProfile,
   DEFAULT_THRESHOLDS,
   DISTANCE_CATEGORY_LABELS,
+  describeTimeProfile,
   type Band,
   type BandStrength,
   type DistanceCategory,
   type DistanceStat,
   type StrengthThresholds,
+  type TimeProfile,
 } from "./distance-strategy";
 
 export type Element = "water" | "fire" | "earth" | "air" | string;
@@ -43,9 +45,11 @@ export interface Core {
   allDistances: DistanceStat[];
   category: DistanceCategory;
   bands: Record<Band, BandStrength>;
+  /** Time-based distance profile behind `category` (lean, preferred distance); null without enough data. */
+  distanceTime: TimeProfile | null;
   /**
    * A best-guess Sprint/Mid/Marathon lean when `category` is "Developing"
-   * (own race data, but nothing clears the strength threshold) or "Unproven"
+   * (own race data, but not enough at both short and long distances) or "Unproven"
    * (no race data — usually a freshly spliced core). "own-data" means it's
    * this core's own (sub-threshold) results; "parents" means it's inferred
    * from its parents' combined race history. Null when there's nothing to
@@ -388,9 +392,11 @@ export {
   classifyDistanceProfile,
   DEFAULT_THRESHOLDS,
   DISTANCE_CATEGORY_LABELS,
+  describeTimeProfile,
   type Band,
   type BandStrength,
   type DistanceCategory,
   type DistanceStat,
   type StrengthThresholds,
+  type TimeProfile,
 };

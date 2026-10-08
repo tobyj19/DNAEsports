@@ -16,6 +16,7 @@
 import { useMemo, useState } from "react";
 import {
   DISTANCE_CATEGORY_LABELS,
+  describeTimeProfile,
   DISTANCE_STRATEGIES,
   STRATEGY_LABELS,
   rankBreedingPairs,
@@ -368,7 +369,12 @@ function ArenaParentCard({ label, core, mine }: { label: string; core: Core; min
         </span>
         <span
           className="inline-block rounded-full border border-line bg-panel px-2 py-0.5 text-xs text-soft"
-          title={DISTANCE_CATEGORY_LABELS[core.category]}
+          title={
+            core.distanceTime
+              ? `${DISTANCE_CATEGORY_LABELS[core.category]}
+${describeTimeProfile(core.distanceTime)}`
+              : DISTANCE_CATEGORY_LABELS[core.category]
+          }
         >
           {core.category}
         </span>

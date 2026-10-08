@@ -22,10 +22,8 @@ import {
   type DistanceCategory,
   type DistanceStat,
 } from "./dna-breeding";
-import { ESPORTS_DISTANCES } from "./distance-strategy";
 
 const API_BASE = "https://api.dnaracing.run";
-const ESPORTS_DISTANCE_SET = new Set(ESPORTS_DISTANCES);
 
 /**
  * The docs only show `parents`/`grand_parents` as `null` for genesis cores —
@@ -145,6 +143,7 @@ interface RaceRecord {
   time: number | null;
   pos: number | null;
   star: number | null;
+  status?: string | null;
 }
 
 interface RaceHistoryResponse {
@@ -153,33 +152,39 @@ interface RaceHistoryResponse {
 }
 
 /**
- * Fetches a core's race history (bike mode only, esports-relevant distances
- * only) and computes win% / top-3% per distance. Mirrors the decoding your
- * coreProfile.ts already confirmed (cb * 100 = meters), but only computes the
- * fields the breeding tool needs.
+ * Fetches a core's bike race history and computes, per distance, win% /
+ * top-3% and average finish time. Mirrors the decoding your coreProfile.ts
+ * already confirmed (cb * 100 = meters). Every bike distance (900-2300m) is
+ * kept because the time-based distance profile uses all of them; the band
+ * win%/top-3% figures only look at the 7 esports distances.
  */
 async function fetchDistanceStats(hid: number): Promise<DistanceStat[]> {
   const data = await postJson<RaceHistoryResponse>("/fbike/i/hraces", { hid, limit: 500 });
 
-  const byDist = new Map<number, { races: number; wins: number; podiums: number }>();
+  const byDist = new Map<number, { races: number; wins: number; podiums: number; timeSum: number; timeN: number }>();
   for (const r of data.result) {
     if (r.rvmode !== "bike" || r.cb == null || r.pos == null) continue;
+    if (r.status != null && r.status !== "finished") continue;
     const dist = Math.round(r.cb * 100);
-    if (!ESPORTS_DISTANCE_SET.has(dist)) continue;
 
-    const entry = byDist.get(dist) ?? { races: 0, wins: 0, podiums: 0 };
+    const entry = byDist.get(dist) ?? { races: 0, wins: 0, podiums: 0, timeSum: 0, timeN: 0 };
     entry.races += 1;
     if (r.pos === 1) entry.wins += 1;
     if (r.pos <= 3) entry.podiums += 1;
+    if (r.time != null && r.time > 0) {
+      entry.timeSum += r.time;
+      entry.timeN += 1;
+    }
     byDist.set(dist, entry);
   }
 
   return Array.from(byDist.entries())
-    .map(([distance, { races, wins, podiums }]) => ({
+    .map(([distance, { races, wins, podiums, timeSum, timeN }]) => ({
       distance,
       races,
       winPct: races > 0 ? wins / races : 0,
       topThreePct: races > 0 ? podiums / races : 0,
+      avgTime: timeN > 0 ? timeSum / timeN : undefined,
     }))
     .sort((a, b) => a.distance - b.distance);
 }
@@ -250,7 +255,7 @@ async function enrichCoreBasics(basics: CoreBasics[]): Promise<Core[]> {
     const splicingInfo = splicingByHid.get(m.hid);
     const s = splicingInfo?.splice_core ?? null;
     const allDistances = distancesByHid.get(m.hid) ?? [];
-    const { category, bands } = classifyDistanceProfile(allDistances);
+    const { category, bands, time: distanceTime } = classifyDistanceProfile(allDistances);
 
     let guessedCategory: DistanceCategory | null = null;
     let guessSource: Core["guessSource"] = null;
@@ -279,6 +284,7 @@ async function enrichCoreBasics(basics: CoreBasics[]): Promise<Core[]> {
       racesN: bikePower?.races_n ?? 0,
       allDistances,
       category,
+      distanceTime,
       guessedCategory,
       guessSource,
       bands,
