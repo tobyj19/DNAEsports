@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { GameCoreEntry, GameCoreProfile, RaceMode } from "@/lib/gameCoreSearch";
 import { getPopulationAvgTime } from "@/lib/coreProfile";
 import DistancePanel from "../cores/distance-panel";
@@ -162,7 +163,13 @@ export default function CoreSearchClient() {
             <p className="text-sm text-[#9CA6B0] mb-1 capitalize">
               #{selected.hid} · {selected.element ?? "—"}/{selected.type} · {selected.gender}
             </p>
-            {selected.vaultName && <p className="text-xs text-[#9CA6B0] mb-4">Owner: {selected.vaultName}</p>}
+            {selected.vaultName && <p className="text-xs text-[#9CA6B0] mb-2">Owner: {selected.vaultName}</p>}
+            <Link
+              href={`/core/${selected.hid}?mode=${mode}`}
+              className="inline-block mb-4 rounded px-3 py-1.5 bg-mint text-ink text-sm font-medium hover:opacity-90"
+            >
+              Open full profile →
+            </Link>
 
             {loadingDetail && <p className="text-[#9CA6B0] text-sm">Loading profile…</p>}
             {detailError && (
