@@ -78,16 +78,22 @@ function median(nums: number[]): number {
  * to the esports league specifically. */
 export const ESPORTS_DISTANCES = new Set([1000, 1200, 1400, 1600, 1800, 2000, 2200]);
 
-function computeDistanceStats(races: Awaited<ReturnType<typeof getRaceHistory>>): {
+/** Defaults match the esports pages (bike only, esports distances only). The
+ * whole-game Core Search passes a different mode and `null` to keep every distance. */
+export function computeDistanceStats(
+  races: Awaited<ReturnType<typeof getRaceHistory>>,
+  rvmode = "bike",
+  distanceFilter: Set<number> | null = ESPORTS_DISTANCES
+): {
   best: DistanceStat | null;
   all: DistanceStat[];
 } {
   const byDist = new Map<number, { time: number; pos: number; star: number | null; prize: number; fee: number }[]>();
 
   for (const r of races) {
-    if (r.rvmode !== "bike" || r.cb == null || r.time == null) continue;
-    const dist = Number(r.cb) * 100;
-    if (!ESPORTS_DISTANCES.has(dist)) continue;
+    if (r.rvmode !== rvmode || r.cb == null || r.time == null) continue;
+    const dist = Math.round(Number(r.cb) * 100);
+    if (distanceFilter && !distanceFilter.has(dist)) continue;
     if (!byDist.has(dist)) byDist.set(dist, []);
     byDist.get(dist)!.push({
       time: r.time,

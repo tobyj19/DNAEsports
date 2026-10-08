@@ -233,10 +233,12 @@ export interface RaceHistoryEntry {
   fee: number | null; // DEZ entry fee
 }
 
-export function getRaceHistory(hid: number) {
+export function getRaceHistory(hid: number, limit = 500) {
   // The API defaults to only the most recent 50 races if no limit is given —
   // silently missing most of a core's history for anyone with a longer career.
   // 500 comfortably covers every core we've seen (confirmed against real cores
-  // with 100+ races) without meaningfully increasing response time.
-  return post<RaceHistoryEntry[]>("/i/hraces", { hid, limit: 500 });
+  // with 100+ races) without meaningfully increasing response time. Whole-game
+  // lookups pass a higher limit: veteran cores across all three modes can exceed
+  // 500 (hid 1 had 598 in Oct 2026).
+  return post<RaceHistoryEntry[]>("/i/hraces", { hid, limit });
 }
