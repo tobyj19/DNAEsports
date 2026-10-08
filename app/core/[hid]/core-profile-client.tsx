@@ -399,16 +399,29 @@ function Family({ info, mode, breeder, tiers }: { info: CoreInfo; mode: RaceMode
         title={`Offspring · ${mode}`}
         right={
           info.offspring.length > 1 && (
-            <div className="flex rounded-lg border border-white/[0.07] bg-black/20 p-0.5 text-xs">
-              {OFFSPRING_SORTS.map((o) => (
-                <button
-                  key={o.id}
-                  onClick={() => setSort(o.id)}
-                  className={`rounded-md px-2 py-1 transition-colors ${sort === o.id ? "bg-white/10 text-white" : "text-muted hover:text-white"}`}
-                >
-                  {o.label}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {burntCount > 0 && (
+                <div className="flex rounded-lg border border-white/[0.07] bg-black/20 p-0.5 text-xs">
+                  <button
+                    onClick={() => setHideBurnt((v) => !v)}
+                    aria-pressed={hideBurnt}
+                    className={`rounded-md px-2 py-1 transition-colors ${hideBurnt ? "bg-white/10 text-white" : "text-muted hover:text-white"}`}
+                  >
+                    Hide burnt
+                  </button>
+                </div>
+              )}
+              <div className="flex rounded-lg border border-white/[0.07] bg-black/20 p-0.5 text-xs">
+                {OFFSPRING_SORTS.map((o) => (
+                  <button
+                    key={o.id}
+                    onClick={() => setSort(o.id)}
+                    className={`rounded-md px-2 py-1 transition-colors ${sort === o.id ? "bg-white/10 text-white" : "text-muted hover:text-white"}`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )
         }
@@ -421,10 +434,8 @@ function Family({ info, mode, breeder, tiers }: { info: CoreInfo; mode: RaceMode
               {info.offspring.length} offspring
               {burntCount > 0 && (
                 <>
-                  {" "}· <span className="text-bad">{burntCount} burnt</span>{" "}
-                  <button onClick={() => setHideBurnt((v) => !v)} className="underline decoration-dotted hover:text-white">
-                    {hideBurnt ? "show" : "hide"}
-                  </button>
+                  {" "}· <span className="text-bad">{burntCount} burnt</span>
+                  {hideBurnt && " (hidden)"}
                 </>
               )}
               {avgPower != null && (
