@@ -7,6 +7,7 @@
 
 import {
   fetchArenaCoreIds,
+  fetchStudBarnLive,
   fetchMarketListings,
   fetchMiniInfo,
   fetchPowerStats,
@@ -25,26 +26,53 @@ export type Source = "vault" | "vault2" | "stud" | "market";
 const MAX_PER_CORE = 3;
 const CACHE_MS = 5 * 60 * 1000;
 
-// The whole stud barn, from the snapshot the "Stud barn snapshot" workflow publishes
-// every 30 minutes (scripts/stud-barn-snapshot.py) — the live arena API needs minutes
-// to page through. Falls back to the live first page if the snapshot can't be read.
+// The whole stud barn, loaded live (fetchStudBarnLive: a bulk in_stud scan, a few
+// seconds) and shared between searches for STUD_BARN_CACHE_MS. If the live scan
+// fails, falls back to the snapshot the "Stud barn snapshot" workflow publishes
+// (scripts/stud-barn-snapshot.py), then to the arena's first live page.
+const STUD_BARN_CACHE_MS = 2 * 60 * 1000;
 const SNAPSHOT_URL = "https://raw.githubusercontent.com/tobyj19/DNAEsports/data/stud-barn.json";
 
 interface StudBarn {
   cores: ArenaCoreEntry[];
-  /** ISO time of the snapshot, or null when only the live first page was available. */
+  /** ISO time the listings were read, or null when only the arena's first page was available. */
   generated: string | null;
+  /** True when read live; false when it came from the backup snapshot. */
+  live: boolean;
 }
 
-async function studBarn(mode: RaceMode): Promise<StudBarn> {
+let studBarnCache: { at: number; barn: StudBarn } | null = null;
+let studBarnLoading: Promise<StudBarn> | null = null;
+
+async function loadStudBarn(mode: RaceMode): Promise<StudBarn> {
+  try {
+    const cores = await fetchStudBarnLive();
+    if (cores.length > 0) return { cores, generated: new Date().toISOString(), live: true };
+  } catch {}
   try {
     const res = await fetch(SNAPSHOT_URL, { next: { revalidate: 300 } });
     if (res.ok) {
       const snap = await res.json();
-      if (Array.isArray(snap?.cores) && snap.cores.length > 0) return { cores: snap.cores, generated: snap.generated ?? null };
+      if (Array.isArray(snap?.cores) && snap.cores.length > 0) return { cores: snap.cores, generated: snap.generated ?? null, live: false };
     }
   } catch {}
-  return { cores: await fetchArenaCoreIds(mode), generated: null };
+  return { cores: await fetchArenaCoreIds(mode), generated: null, live: false };
+}
+
+/** Listings are the same in every race mode, so one cached barn serves all searches. */
+async function studBarn(mode: RaceMode): Promise<StudBarn> {
+  if (studBarnCache && Date.now() - studBarnCache.at < STUD_BARN_CACHE_MS) return studBarnCache.barn;
+  if (!studBarnLoading) {
+    studBarnLoading = loadStudBarn(mode)
+      .then((barn) => {
+        if (barn.live) studBarnCache = { at: Date.now(), barn };
+        return barn;
+      })
+      .finally(() => {
+        studBarnLoading = null;
+      });
+  }
+  return studBarnLoading;
 }
 
 const powerCache = new Map<string, { at: number; stats: PowerStats | null }>();
@@ -139,8 +167,10 @@ export interface FinderRequest {
 export interface FinderResponse {
   pairs: PairResult[];
   counts: { fathers: number; mothers: number; pairsChecked: number; studs: number; market: number };
-  /** When the stud barn snapshot was taken (ISO), if one was used. */
+  /** When the stud barn listings were read (ISO). */
   studBarnAt: string | null;
+  /** True when the stud barn was read live (not from the backup snapshot). */
+  studBarnLive: boolean;
   notes: string[];
 }
 
@@ -160,7 +190,8 @@ export async function findPairs(req: FinderRequest): Promise<FinderResponse> {
   if (vaultHids == null) notes.push("Couldn't load vault 1 — check the address.");
   if (vault2Hids == null) notes.push("Couldn't load vault 2 — check the address.");
   if (want.has("stud") && arena == null) notes.push("The stud barn didn't respond; try again in a moment.");
-  if (arena && arena.generated == null) notes.push("Stud barn snapshot unavailable — showing only the first 100 live listings.");
+  if (arena && !arena.live && arena.generated != null) notes.push("Couldn't read the stud barn live — using the last snapshot, so very recent listings may be missing.");
+  if (arena && arena.generated == null) notes.push("Stud barn unavailable — showing only the first 100 live listings.");
   if (market == null) notes.push("The marketplace didn't respond; try again in a moment.");
 
   for (const [hids, src] of [
@@ -294,6 +325,7 @@ export async function findPairs(req: FinderRequest): Promise<FinderResponse> {
       market: market?.length ?? 0,
     },
     studBarnAt: arena?.generated ?? null,
+    studBarnLive: arena?.live ?? false,
     notes,
   };
 }

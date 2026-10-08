@@ -1,13 +1,14 @@
 name: Stud barn snapshot
 
-# Every 30 minutes, saves the whole stud barn (Splice Arena) to stud-barn.json
-# on the `data` branch. The Pair Finder reads it from there, because loading
-# the arena live takes minutes. Only the `data` branch changes; main and the
+# Backup only: the Pair Finder reads the stud barn live (lib/dna-api.ts
+# fetchStudBarnLive) and falls back to this snapshot if that fails. Every 6 hours,
+# saves the whole stud barn (Splice Arena) to stud-barn.json
+# on the `data` branch. Only the `data` branch changes; main and the
 # live site are untouched (vercel.json skips deploying `data`).
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "17 */6 * * *"
   workflow_dispatch:
 
 permissions:

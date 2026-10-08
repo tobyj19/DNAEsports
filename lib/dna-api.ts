@@ -148,6 +148,55 @@ export async function fetchArenaCoreIds(rvmode: ArenaFilter["rvmode"] = "bike"):
   return data.result.cores;
 }
 
+// Core ID blocks to scan for studs: the original cores (with headroom for new
+// splices) and the 200,000+ genesis series. Same blocks as Power Search.
+const STUD_SCAN_RANGES: [number, number][] = [
+  [1, 30000],
+  [200000, 202499],
+];
+const STUD_SCAN_BATCH = 2500; // splicing_info_bulk answers 2,500 hids in ~1 s
+const STUD_SCAN_CONCURRENCY = 6;
+
+/**
+ * The whole stud barn, live, in a few seconds. The arena endpoint above pages
+ * 100 cores at a time and cold pages take 10-40 s, but every core's
+ * splicing_info carries `in_stud` and its stud fee, so scanning all core IDs in
+ * bulk finds exactly the same listings (checked Oct 2026: all 1,461 snapshot
+ * studs, identical fees, plus 21 listed since) — then mini_bulk fills in names.
+ */
+export async function fetchStudBarnLive(): Promise<ArenaCoreEntry[]> {
+  const batches: number[][] = [];
+  for (const [from, to] of STUD_SCAN_RANGES) {
+    for (let s = from; s <= to; s += STUD_SCAN_BATCH) {
+      batches.push(Array.from({ length: Math.min(STUD_SCAN_BATCH, to - s + 1) }, (_, i) => s + i));
+    }
+  }
+  const studs = new Map<number, number>(); // hid -> stud fee (USD)
+  let next = 0;
+  async function worker() {
+    while (next < batches.length) {
+      const hids = batches[next++];
+      const r = await postJson<SplicingInfoBulkResponse>("/fbike/cores/splicing_info_bulk", { hids });
+      for (const s of r.result) {
+        if (s?.splice_core?.in_stud) studs.set(s.hid, s.splice_core.price_usd);
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: STUD_SCAN_CONCURRENCY }, worker));
+
+  const minis = await fetchMiniInfo([...studs.keys()]);
+  return minis.map((m) => ({
+    hid: m.hid,
+    price_usd: studs.get(m.hid) ?? 0,
+    name: m.name,
+    type: m.type,
+    element: m.element,
+    gender: m.gender,
+    fno: m.fno,
+    vault: m.vault,
+  }));
+}
+
 export interface PowerStats {
   pwr: number | null; // official PWR, 0-100
   vari: number | null;

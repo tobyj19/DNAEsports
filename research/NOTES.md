@@ -208,10 +208,9 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
 
 ## Open items / ideas
 
-- **Stud barn snapshot cadence:** the workflow is scheduled every 30 min, but GitHub
-  throttles free scheduled jobs — it has been running every ~5–7 h, so Pair Finder's
-  stud barn can be hours old. Options if freshness matters: an external cron hitting
-  `workflow_dispatch`, or a Vercel cron route.
+- ~~Stud barn freshness~~ — fixed Oct 9: the Pair Finder now reads the whole barn live
+  (`fetchStudBarnLive`: bulk `splicing_info_bulk` scan for `in_stud`, ~2–3 s, cached 2 min).
+  The snapshot workflow is now a 6-hourly backup only.
 - **Esports Telemetry** — on hold (owner's call). Esports data is totals only
   (`/fbike/esports/hstats`): avg/best time per distance could be shown, not individual races.
 - **Not built yet from the original plan:** Ceiling / Consistency scores (VAR isn't

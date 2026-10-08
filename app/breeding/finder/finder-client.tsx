@@ -221,7 +221,7 @@ export default function FinderClient() {
         <>
           <div className="text-xs text-muted">
             {data.counts.studs > 0 &&
-              `${data.counts.studs.toLocaleString()} cores in the stud barn${data.studBarnAt ? ` (as of ${minutesAgo(data.studBarnAt)})` : ""} · `}
+              `${data.counts.studs.toLocaleString()} cores in the stud barn${data.studBarnAt ? ` (${data.studBarnLive ? "live" : "snapshot"}, ${minutesAgo(data.studBarnAt)})` : ""} · `}
             Checked {data.counts.pairsChecked.toLocaleString()} pairs ({data.counts.fathers} fathers × {data.counts.mothers} mothers) · showing the top{" "}
             {data.pairs.length} (each core at most 3 times, for variety)
             {data.notes.map((n) => (

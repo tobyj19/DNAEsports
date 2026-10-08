@@ -4,8 +4,10 @@ Usage: python scripts/stud-barn-snapshot.py OUT.json
 
 The arena API answers 100 cores per page, reports has_more: false even when
 there are more, and pages it hasn't served recently take 10-40 s each, so the
-site can't load it on demand. The "Stud barn snapshot" workflow runs this every
-30 minutes and publishes the result on the `data` branch, which the Pair Finder
+site can't page it on demand. The site now reads the barn live via a bulk in_stud
+scan (lib/dna-api.ts fetchStudBarnLive); this snapshot is the fallback. The
+"Stud barn snapshot" workflow runs this every 6 hours
+and publishes the result on the `data` branch, which the Pair Finder
 reads (lib/pairFinder.ts). Listings are the same for every race mode; power
 stats per mode are looked up separately by the site.
 """
