@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { SIM_DISTANCES, THIN_SAMPLE, simulateRace, type SimCore, type SimResult } from "@/lib/raceSim";
+import type { GameCoreEntry } from "@/lib/gameCoreSearch";
 
 const MIN_GATES = 2;
 const MAX_GATES = 14;
 const CHUNK = 20;
 const MAX_MATCHES = 7; // short enough that the dropdown never needs its own scroll bar
+const SEARCH_DEBOUNCE_MS = 250;
 const MUTED = "text-muted";
 
 export interface DirectoryCore {
@@ -46,6 +48,8 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
   const [error, setError] = useState<string | null>(null);
   const [odds, setOdds] = useState<Record<number, string>>({});
   const [results, setResults] = useState<SimResult[]>([]);
+  const [gameHits, setGameHits] = useState<GameCoreEntry[]>([]); // same game-wide index as Core Search
+  const [gameSearching, setGameSearching] = useState(false);
 
   const est = (c: SimCore) => (paidOnly ? c.paid : c.all);
   const known = useMemo(() => {
@@ -120,21 +124,55 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
     }
   }
 
-  // Search: name or team from the known list, or any core ID in the game
+  // Search: every core in the game by name (the Core Search index), esports roster
+  // and added-vault cores first with their team, plus any core ID.
   const q = query.trim().toLowerCase().replace(/^#/, "");
+
+  useEffect(() => {
+    if (q.length < 2 || /^\d+$/.test(q)) {
+      setGameHits([]);
+      setGameSearching(false);
+      return;
+    }
+    const controller = new AbortController();
+    setGameSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/game-core-search?q=${encodeURIComponent(q)}`, { signal: controller.signal });
+        const data = await res.json().catch(() => null);
+        if (!controller.signal.aborted) setGameHits(res.ok && data ? data.results : []);
+      } catch {
+        if (!controller.signal.aborted) setGameHits([]);
+      } finally {
+        if (!controller.signal.aborted) setGameSearching(false);
+      }
+    }, SEARCH_DEBOUNCE_MS);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [q]);
+
   const matches = useMemo(() => {
     if (q.length < 2) return [];
     const taken = new Set(filled);
     const list = known
       .filter((c) => !taken.has(c.hid) && (c.name.toLowerCase().includes(q) || String(c.hid).startsWith(q) || c.team.toLowerCase().includes(q)))
       .slice(0, MAX_MATCHES);
+    const listed = new Set(list.map((c) => c.hid));
+    for (const g of gameHits) {
+      if (list.length >= MAX_MATCHES) break;
+      if (taken.has(g.hid) || listed.has(g.hid)) continue;
+      listed.add(g.hid);
+      list.push({ hid: g.hid, name: g.name, team: g.vaultName || g.type });
+    }
     const asId = /^\d+$/.test(q) ? Number(q) : null;
     if (asId && !taken.has(asId) && !list.some((c) => c.hid === asId)) {
       list.unshift({ hid: asId, name: pool[asId]?.name ?? `Core #${asId}`, team: "load by ID" });
     }
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, known, slots, pool]);
+  }, [q, known, slots, pool, gameHits]);
 
   const entrants = useMemo(
     () =>
@@ -204,7 +242,7 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
         </div>
 
         <label htmlFor="sim-search" className={`block text-xs ${MUTED} mb-1`}>
-          Add a core to the next empty gate: search by name or team, or type any core ID
+          Add a core to the next empty gate: search any core by name, team or core ID
         </label>
         <div className="relative max-w-xl">
           <input
@@ -221,7 +259,9 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
           />
           {hasEmptyGate && q.length >= 2 && (
             <ul className="absolute z-10 left-0 right-0 mt-1 rounded border border-line bg-ink shadow-lg">
-              {matches.length === 0 && <li className={`px-3 py-2 text-sm ${MUTED}`}>No core found. Try its core ID.</li>}
+              {matches.length === 0 && (
+                <li className={`px-3 py-2 text-sm ${MUTED}`}>{gameSearching ? "Searching…" : "No core found. Try its core ID."}</li>
+              )}
               {matches.map((c) => (
                 <li key={c.hid}>
                   <button
@@ -239,7 +279,7 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
         </div>
 
         <details className="mt-3">
-          <summary className={`text-xs ${MUTED} cursor-pointer`}>Can&apos;t find a core by name? Add a vault&apos;s cores to the search</summary>
+          <summary className={`text-xs ${MUTED} cursor-pointer`}>Add a whole vault&apos;s cores to the search</summary>
           <div className="flex flex-wrap gap-3 mt-2">
             <input
               aria-label="Vault address"
@@ -252,7 +292,7 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
               {vaultBusy ? "Loading…" : "Add vault"}
             </button>
           </div>
-          <p className={`text-xs ${MUTED} mt-1`}>Name search covers cores rostered on an esports team. Any other core needs its ID or its vault.</p>
+          <p className={`text-xs ${MUTED} mt-1`}>Search already covers every core in the game; adding a vault lists its cores under the vault&apos;s name.</p>
         </details>
         {error && <p className="text-bad text-sm mt-3">{error}</p>}
       </div>
