@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import type { Listings } from "@/lib/pairFinder";
 import {
   ID_RANGES,
   TOTAL_IDS,
@@ -17,6 +19,7 @@ const CONCURRENT_CHUNKS = 3;
 const MAX_DISPLAY = 500;
 
 const MODE_LABEL: Record<RaceMode, string> = { bike: "Bike", car: "Car", horse: "Horse" };
+const MARKET_URL = "https://market.dnaracing.run/asset/core";
 
 // Confirmed against live game data (lib/data/leaderboards-full-game.json) — the
 // game currently has exactly these 4 elements. "trainer" is a real `type` value
@@ -45,6 +48,22 @@ export default function PowerSearchClient() {
   const [totalChunks, setTotalChunks] = useState(0);
   const [matches, setMatches] = useState<FoundCore[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Who is in the stud barn / for sale right now (loaded once, from /api/listings)
+  const [listings, setListings] = useState<Listings | null>(null);
+  const [listingsError, setListingsError] = useState(false);
+  const [onlyStud, setOnlyStud] = useState(false);
+  const [onlySale, setOnlySale] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/listings")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d: Listings) => !cancelled && setListings(d))
+      .catch(() => !cancelled && setListingsError(true));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const cancelRef = useRef(false);
 
@@ -106,7 +125,13 @@ export default function PowerSearchClient() {
     cancelRef.current = true;
   }
 
-  const sorted = useMemo(() => [...matches].sort((a, b) => bestPower(b) - bestPower(a)), [matches]);
+  const sorted = useMemo(
+    () =>
+      [...matches]
+        .filter((c) => (!onlyStud || listings?.studs[c.hid] != null) && (!onlySale || listings?.market[c.hid] != null))
+        .sort((a, b) => bestPower(b) - bestPower(a)),
+    [matches, onlyStud, onlySale, listings]
+  );
   const shown = sorted.slice(0, MAX_DISPLAY);
   const modesToShow: RaceMode[] = modeSelection === "all" ? RACE_MODES : [modeSelection];
   const progressPct = totalChunks > 0 ? Math.round((scannedChunks / totalChunks) * 100) : 0;
@@ -134,6 +159,9 @@ export default function PowerSearchClient() {
       "Car Distance",
       "Horse Distance",
       "Matched Modes",
+      "Stud fee USD",
+      "Market price",
+      "Market USD",
     ];
     const rows = sorted.map((c) => [
       c.hid,
@@ -157,6 +185,9 @@ export default function PowerSearchClient() {
       distanceLabel(c.distance?.car),
       distanceLabel(c.distance?.horse),
       c.matchedModes.map((m) => MODE_LABEL[m]).join("/"),
+      listings?.studs[c.hid] ?? "",
+      listings?.market[c.hid]?.price ?? "",
+      listings?.market[c.hid] ? Math.round(listings.market[c.hid].usd) : "",
     ]);
     const csv = [headers, ...rows].map((row) => row.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -321,6 +352,23 @@ export default function PowerSearchClient() {
             Download CSV ({sorted.length})
           </button>
         )}
+        <div className="ml-auto flex items-center gap-2 text-xs">
+          {listingsError ? (
+            <span className="text-muted">Stud barn / market info unavailable</span>
+          ) : !listings ? (
+            <span className="text-muted">Loading stud barn and market…</span>
+          ) : (
+            <>
+              <span className="text-muted">Only show:</span>
+              <Toggle on={onlyStud} onClick={() => setOnlyStud((v) => !v)} color="#A78BFA">
+                In stud barn ({Object.keys(listings.studs).length.toLocaleString()})
+              </Toggle>
+              <Toggle on={onlySale} onClick={() => setOnlySale((v) => !v)} color="#FBBF24">
+                For sale ({Object.keys(listings.market).length.toLocaleString()})
+              </Toggle>
+            </>
+          )}
+        </div>
       </div>
 
       {(running || scannedChunks > 0) && (
@@ -345,6 +393,8 @@ export default function PowerSearchClient() {
                 <th className="text-left px-3 py-2">HID</th>
                 <th className="text-left px-3 py-2">Name</th>
                 <th className="text-left px-3 py-2">Element/Type</th>
+                <th className="text-left px-3 py-2">Stud barn</th>
+                <th className="text-left px-3 py-2">Market</th>
                 {modesToShow.map((mode) => (
                   <th key={mode} className="text-left px-3 py-2">
                     {MODE_LABEL[mode]} PWR/VAR/ADJ (races)
@@ -356,9 +406,37 @@ export default function PowerSearchClient() {
               {shown.map((c) => (
                 <tr key={c.hid}>
                   <td className="px-3 py-2 text-muted">#{c.hid}</td>
-                  <td className="px-3 py-2 font-medium">{c.name}</td>
+                  <td className="px-3 py-2 font-medium">
+                    <Link href={`/core/${c.hid}`} className="hover:text-cyan hover:underline">
+                      {c.name}
+                    </Link>
+                  </td>
                   <td className="px-3 py-2 capitalize text-muted">
                     {c.element ?? "—"}/{c.type}
+                  </td>
+                  <td className="px-3 py-2">
+                    {listings?.studs[c.hid] != null ? (
+                      <span className="rounded-full border border-violet-400/40 bg-violet-500/10 px-2 py-0.5 text-xs text-violet-300">
+                        ${Math.round(listings.studs[c.hid])} fee
+                      </span>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    {listings?.market[c.hid] ? (
+                      <a
+                        href={`${MARKET_URL}/${c.hid}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={`About $${Math.round(listings.market[c.hid].usd)}`}
+                        className="rounded-full border border-amber/40 bg-amber/10 px-2 py-0.5 text-xs text-amber hover:bg-amber/20"
+                      >
+                        {listings.market[c.hid].price} ↗
+                      </a>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
                   </td>
                   {modesToShow.map((mode) => {
                     const stats = c.modes[mode];
@@ -392,6 +470,20 @@ export default function PowerSearchClient() {
         <p className="text-muted text-sm">No cores matched those filters.</p>
       )}
     </div>
+  );
+}
+
+function Toggle({ on, onClick, color, children }: { on: boolean; onClick: () => void; color: string; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={on}
+      className="rounded-full border px-3 py-1 transition-colors"
+      style={on ? { borderColor: `${color}99`, background: `${color}22`, color } : { borderColor: "rgba(255,255,255,0.12)", color: "#8B9BB0" }}
+    >
+      {on ? "✓ " : ""}
+      {children}
+    </button>
   );
 }
 

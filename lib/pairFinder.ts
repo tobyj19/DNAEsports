@@ -59,6 +59,27 @@ async function loadStudBarn(mode: RaceMode): Promise<StudBarn> {
   return { cores: await fetchArenaCoreIds(mode), generated: null, live: false };
 }
 
+/** Who is in the stud barn (fee, USD) and who is for sale on the marketplace, for badges elsewhere (Power Search). */
+export interface Listings {
+  studs: Record<number, number>;
+  market: Record<number, { price: string; usd: number }>;
+  /** When the stud barn was read (ISO), if known. */
+  studsAt: string | null;
+}
+
+export async function getListings(): Promise<Listings> {
+  const modes = ["bike", "car", "horse"] as const;
+  const [barn, ...markets] = await Promise.all([
+    studBarn("bike").catch(() => null),
+    ...modes.map((m) => fetchMarketListings(m).catch(() => [])),
+  ]);
+  const studs: Listings["studs"] = {};
+  for (const c of barn?.cores ?? []) studs[c.hid] = c.price_usd;
+  const market: Listings["market"] = {};
+  for (const list of markets) for (const l of list) market[l.hid] = { price: l.price, usd: l.priceUsd };
+  return { studs, market, studsAt: barn?.generated ?? null };
+}
+
 /** Listings are the same in every race mode, so one cached barn serves all searches. */
 async function studBarn(mode: RaceMode): Promise<StudBarn> {
   if (studBarnCache && Date.now() - studBarnCache.at < STUD_BARN_CACHE_MS) return studBarnCache.barn;
