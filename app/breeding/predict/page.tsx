@@ -52,7 +52,13 @@ export default async function PredictPage({ searchParams }: Props) {
         </Link>
       </div>
 
-      <PredictForm father={fHid} mother={mHid} mode={mode} />
+      <PredictForm
+        father={fHid}
+        mother={mHid}
+        fatherCore={father ? { hid: father.hid, name: father.name } : null}
+        motherCore={mother ? { hid: mother.hid, name: mother.name } : null}
+        mode={mode}
+      />
 
       {(fHid && !father) || (mHid && !mother) ? (
         <Notice>Couldn&apos;t find {fHid && !father ? `core #${fHid}` : `core #${mHid}`}. Check the ID.</Notice>
