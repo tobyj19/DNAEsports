@@ -342,7 +342,7 @@ function ParentTile({ c, role, mode }: { c: Candidate; role: "Father" | "Mother"
       <div className="mt-1.5 flex flex-wrap items-center gap-1">
         {c.grades.overall && <GradeChip grade={c.grades.overall.grade} />}
         {c.distance && (
-          <span className="rounded-md border border-white/10 px-1.5 text-[10px] leading-4 text-soft" title={c.distance.own ? "Its distance type" : "Likely type, from its parents"}>
+          <span className="rounded-md border border-white/10 px-1.5 text-[10px] leading-4 text-soft" title={c.distance.own ? "Its distance type" : c.distance.from === "parents" ? "Likely type, from its parents" : "Band it races in most (not conclusive yet)"}>
             {c.distance.own ? c.distance.type : `~${c.distance.type}`}
           </span>
         )}

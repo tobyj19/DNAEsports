@@ -10,8 +10,13 @@ to the core's own average). Categories match lib/distance-strategy.ts:
 Fallback order (owner's call):
   1. own    - medium/high confidence profile from its own races
   2. parents - "Developing": not conclusive yet, so the likely type comes from the
-               parents' leans (offspring lean = a + b x mid-parent lean, fitted here)
-  3. raced  - "Developing" at its most-raced distance only (genesis / no parent profiles)
+               parents' CONFIDENT (medium/high) leans (offspring lean = a + b x
+               mid-parent lean, fitted here). Low-confidence parent leans are not used:
+               same accuracy (bike right side 63% vs 62%) and avoids tags resting on a
+               parent's handful of short/long races (e.g. core 22154, Oct 2026).
+  3. raced  - "Developing" with the band of its most-raced distance (<=1300m Sprint,
+               1400-1500m Sprint-Mid, 1600-1700m Mid, 1800-1900m Mid-Marathon,
+               >=2000m Marathon) — genesis / no confident parent profiles
 Every core with races also gets its most-raced distance.
 """
 import argparse, importlib.util, json, math, os
@@ -34,6 +39,19 @@ GENERATED = os.environ.get("DATA_DATE") or date.today().isoformat()
 
 def nearest_esports(d):
     return min(ESPORTS, key=lambda e: abs(e - d))
+
+
+def raced_band(dist):
+    """Distance type for "Developing" cores without confident parents: the band it races in most."""
+    if dist <= 1300:
+        return "Sprint"
+    if dist <= 1500:
+        return "Sprint-Mid"
+    if dist <= 1700:
+        return "Mid"
+    if dist <= 1900:
+        return "Mid-Marathon"
+    return "Marathon"
 
 
 def category(lean, preferred):
@@ -93,10 +111,10 @@ def build(field, races, parents, mode, hidden=frozenset()):
     a = my - b * mx
 
     def parent_lean(h):
-        """Predicted lean from parents' profiles (any confidence, own lean or their own parent guess)."""
+        """Predicted lean from the parents' confident (medium/high) profiles."""
         if h not in parents:
             return None
-        ls = [prof[x]["lean"] for x in parents[h] if x in prof]
+        ls = [conf[x]["lean"] for x in parents[h] if x in conf]
         if not ls:
             return None
         return a + b * (sum(ls) / len(ls))
@@ -158,7 +176,8 @@ def main():
                 if pl is not None:
                     e = [CATEGORIES.index(category(pl, 1600)), round(pl, 3), None, None, 1]
                 else:
-                    e = [None, None, None, None, 2]
+                    band = raced_band(most[0])
+                    e = [CATEGORIES.index(band), None, None, None, 2]
             # + most-raced distance, its races, total races
             e += [most[0], most[1][0], total]
             out[str(hid)][mode] = e

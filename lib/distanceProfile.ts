@@ -4,9 +4,12 @@
 // research/distance-export.py (--site lib/data/distance-profiles.json). Same
 // time-based method and categories as lib/distance-strategy.ts. Fallbacks:
 //   own      conclusive profile from its own races
-//   parents  "Developing" — likely type from its parents' leans (offspring lean =
-//            a + b x parents' average lean; right side of sprint / mid / marathon ~6 in 10 on bike)
-//   raced    "Developing" at its most-raced distance only
+//   parents  "Developing" — likely type from its parents' confident (medium/high) leans
+//            (offspring lean = a + b x parents' average lean; right side of sprint / mid /
+//            marathon ~6 in 10 on bike)
+//   raced    "Developing" — the band of its most-raced distance (<=1300m Sprint,
+//            1400-1500m Sprint-Mid, 1600-1700m Mid, 1800-1900m Mid-Marathon,
+//            >=2000m Marathon), when parents aren't confident either
 // Server-only (the data file is ~2 MB); pages pass small entries down.
 
 import data from "./data/distance-profiles.json";
@@ -17,7 +20,7 @@ export type { DistanceType } from "./distanceTypes";
 export type DistanceSource = "own" | "parents" | "raced";
 
 export interface CoreDistance {
-  /** Own type when source is "own"; likely type from the parents when "parents"; null for "raced". */
+  /** Own type ("own"), likely type from the parents ("parents"), or the band it races in most ("raced"). */
   type: DistanceType | null;
   /** % slower per +1000m vs its own average: positive = fades (sprinter), negative = stayer. */
   lean: number | null;
@@ -67,7 +70,8 @@ export function getDistanceProfile(hid: number, mode: RaceMode): CoreDistance | 
 export function predictOffspringDistance(fatherHid: number, motherHid: number, mode: RaceMode): { type: DistanceType; lean: number } | null {
   const leans = [fatherHid, motherHid]
     .map((h) => getDistanceProfile(h, mode))
-    .filter((p): p is CoreDistance => p != null && p.lean != null && p.source !== "raced")
+    // Only cores' own confident profiles (a parent's own "likely" guess is too indirect).
+    .filter((p): p is CoreDistance => p != null && p.lean != null && p.source === "own")
     .map((p) => p.lean as number);
   if (leans.length === 0) return null;
   const { a, b } = FILE.parentFit[mode];

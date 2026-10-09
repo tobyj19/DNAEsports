@@ -92,6 +92,18 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
 - Core Overview card, "Likely <type>" in the Pair Predictor, parent badges + "Offspring distance"
   filter in the Pair Finder. Named "Distance profile" (not "track record").
 
+### Distance fallback fix (Oct 10)
+
+- Parent-based "Likely" types now use only parents with confident (medium/high) profiles.
+  Held-out accuracy unchanged (bike exact 38% / right side 63%, vs 37% / 62% using any parent
+  lean) with ~7% fewer cores covered. Prompted by core 22154: 161/178 races at 1400–1600m,
+  sire without a profile, dam's low-confidence lean (slow at 900m, 1 race each at 2000/2200m)
+  had produced "Likely Mid-Marathon".
+- No confident parents → "Developing" with the band of the most-raced distance (≤1300m Sprint,
+  1400–1500m Sprint-Mid, 1600–1700m Mid, 1800–1900m Mid-Marathon, ≥2000m Marathon — owner's
+  call: a core living at 1400m reads as Sprint-Mid). Pair Predictor offspring distance uses only cores' own
+  confident profiles.
+
 ### Overall / Own stats / Lineage / Track record (Oct 8, replaces the potential vs track record card)
 
 - **Overall** = best estimate (own stats + bloodline + offspring, offspring weight grows with

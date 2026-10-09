@@ -156,7 +156,7 @@ export interface Candidate extends ParentMeta {
   /** Live official PWR / VAR / ADJ (0-100) and races in this mode. */
   stats: PowerStats | null;
   /** Its distance type, and whether that's its own ("own") or a likely type from its parents. */
-  distance: { type: DistanceType; own: boolean } | null;
+  distance: { type: DistanceType; own: boolean; from: "own" | "parents" | "raced" } | null;
   grades: ReturnType<typeof parentGrades>;
 }
 
@@ -281,7 +281,7 @@ export async function findPairs(req: FinderRequest): Promise<FinderResponse> {
   for (const c of pool.values()) {
     c.stats = stats.get(c.hid) ?? null;
     const d = getDistanceProfile(c.hid, req.mode);
-    c.distance = d?.type ? { type: d.type, own: d.source === "own" } : null;
+    c.distance = d?.type ? { type: d.type, own: d.source === "own", from: d.source } : null;
   }
 
   const usable = (c: Candidate) => c.splicesLeft !== 0 && passes(c, req.parentFilter);

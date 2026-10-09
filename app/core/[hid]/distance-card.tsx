@@ -50,7 +50,10 @@ export default function DistanceCard({ profile, mode }: { profile: CoreDistance 
           style={{ color, background: `${color}14`, boxShadow: `inset 0 0 0 1px ${color}55` }}
         >
           <div className="text-[10px] uppercase tracking-[0.14em] opacity-80">{developing ? "Developing" : "Type"}</div>
-          <div className="text-xl font-black">{developing ? (profile.type ? `Likely ${profile.type}` : "—") : profile.type}</div>
+          <div className="text-xl font-black">
+            {!developing ? profile.type : !profile.type ? "—" : profile.source === "parents" ? `Likely ${profile.type}` : profile.type}
+          </div>
+          {profile.source === "raced" && profile.type && <div className="text-[10px] opacity-80">by where it races most</div>}
         </div>
         <div className="min-w-0 space-y-2 text-sm">
           {!developing && profile.type && (
@@ -69,8 +72,8 @@ export default function DistanceCard({ profile, mode }: { profile: CoreDistance 
               </div>
               <div className="text-xs text-muted">
                 {profile.source === "parents"
-                  ? "Not enough races at both short and long distances yet — the likely type comes from its parents' distance preferences."
-                  : "Not enough races at both short and long distances yet, and no parent profiles to go on."}
+                  ? "Not enough races at both short and long distances yet — the likely type comes from its parents' confident distance profiles."
+                  : "Not enough races at both short and long distances yet, and its parents' distance profiles aren't confident either — so this is just the band it races in most."}
               </div>
             </>
           )}
