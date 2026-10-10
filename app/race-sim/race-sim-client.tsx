@@ -231,9 +231,11 @@ function Builder({ directory, seed }: { directory: DirectoryCore[]; seed: Builde
   }, [entrants]);
 
   // Shared slow-to-fast scale for the range strips
-  const lo = Math.min(...entrants.map((e) => e.d.timeSec - 2.4 * e.d.sdSec));
-  const hi = Math.max(...entrants.map((e) => e.d.timeSec + 2.4 * e.d.sdSec));
-  const x = (t: number) => ((hi - t) / (hi - lo || 1)) * 100;
+  // Fastest on the left, slowest on the right, one scale for the whole field
+  const withTimes = entrants.filter((e) => e.d.fastestSec != null && e.d.slowestSec != null);
+  const lo = Math.min(...withTimes.map((e) => e.d.fastestSec!));
+  const hi = Math.max(...withTimes.map((e) => e.d.slowestSec!));
+  const x = (t: number) => ((t - lo) / (hi - lo || 1)) * 100;
 
   const topWin = results[0]?.win || 1;
   const favName = results[0] ? nameOf(results[0].hid) : "";
@@ -356,10 +358,10 @@ function Builder({ directory, seed }: { directory: DirectoryCore[]; seed: Builde
           </div>
 
           <div className={`flex flex-wrap gap-x-5 gap-y-1 text-xs ${MUTED} mb-2`}>
-            <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block" />Slow end (1 race in 10 is slower)</span>
-            <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-mint inline-block" />Typical time</span>
-            <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-bad inline-block" />Fast end (1 race in 10 is faster)</span>
-            <span>Faster is to the right</span>
+            <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-mint inline-block" />Fastest time</span>
+            <span className="inline-flex items-center gap-1.5"><i className="w-0.5 h-3 bg-white inline-block" />Average time</span>
+            <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-bad inline-block" />Slowest time</span>
+            <span>Faster is to the left · all at this distance</span>
           </div>
 
           <div className="rounded-lg border border-line overflow-hidden overflow-x-auto mb-2">
@@ -372,7 +374,7 @@ function Builder({ directory, seed }: { directory: DirectoryCore[]; seed: Builde
                   <th className="text-right px-3 py-2">Typical</th>
                   <th className="text-right px-3 py-2">PWR</th>
                   <th className="text-right px-3 py-2">VAR</th>
-                  <th className="text-left px-3 py-2 w-[32%]">Time range</th>
+                  <th className="text-left px-3 py-2 w-[32%]">Fastest · average · slowest</th>
                   <th className="text-left px-3 py-2">Odds</th>
                   <th className="px-2 py-2" />
                 </tr>
@@ -405,8 +407,6 @@ function Builder({ directory, seed }: { directory: DirectoryCore[]; seed: Builde
                     );
                   }
                   const { core, d } = entrant;
-                  const slow = d.timeSec + 1.2816 * d.sdSec;
-                  const fast = d.timeSec - 1.2816 * d.sdSec;
                   return (
                     <tr key={gate} className="border-t border-line">
                       <td className="px-3 py-2 tabular-nums">{gate}</td>
@@ -422,18 +422,36 @@ function Builder({ directory, seed }: { directory: DirectoryCore[]; seed: Builde
                       <td className="px-3 py-2 text-right tabular-nums">{d.power.toFixed(1)}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{d.variance}</td>
                       <td className="px-3 py-2">
-                        <div
-                          className="relative h-5 mx-2"
-                          role="img"
-                          aria-label={`Slow end ${slow.toFixed(2)} seconds, typical ${d.timeSec.toFixed(2)}, fast end ${fast.toFixed(2)}`}
-                          title={`${slow.toFixed(2)}s to ${fast.toFixed(2)}s`}
-                        >
-                          <div className="absolute inset-x-0 top-2 h-1 rounded bg-line" />
-                          <div className="absolute top-1.5 h-2 rounded-sm bg-[#3A4654]" style={{ left: `${x(slow)}%`, width: `${x(fast) - x(slow)}%` }} />
-                          <div className="absolute top-1 w-3 h-3 rounded-full bg-sky-400 -translate-x-1/2" style={{ left: `${x(slow)}%` }} />
-                          <div className="absolute top-1 w-3 h-3 rounded-full bg-bad -translate-x-1/2" style={{ left: `${x(fast)}%` }} />
-                          <div className="absolute top-1 w-3 h-3 rounded-full bg-mint -translate-x-1/2" style={{ left: `${x(d.timeSec)}%` }} />
-                        </div>
+                        {d.fastestSec != null && d.avgSec != null && d.slowestSec != null ? (
+                          <div className="mx-2">
+                            <div
+                              className="relative h-5"
+                              role="img"
+                              aria-label={`Fastest ${d.fastestSec.toFixed(2)} seconds, average ${d.avgSec.toFixed(2)}, slowest ${d.slowestSec.toFixed(2)}`}
+                            >
+                              <div className="absolute inset-x-0 top-2 h-1 rounded bg-line" />
+                              <div
+                                className="absolute top-2 h-1 rounded-sm"
+                                style={{
+                                  left: `${x(d.fastestSec)}%`,
+                                  width: `${x(d.slowestSec) - x(d.fastestSec)}%`,
+                                  background: "linear-gradient(to right, #4ADE80, #F87171)",
+                                  opacity: 0.55,
+                                }}
+                              />
+                              <div className="absolute top-1 w-3 h-3 rounded-full bg-mint -translate-x-1/2" style={{ left: `${x(d.fastestSec)}%` }} title={`Fastest ${d.fastestSec.toFixed(2)}s`} />
+                              <div className="absolute top-1 w-3 h-3 rounded-full bg-bad -translate-x-1/2" style={{ left: `${x(d.slowestSec)}%` }} title={`Slowest ${d.slowestSec.toFixed(2)}s`} />
+                              <div className="absolute top-0 w-0.5 h-5 bg-white -translate-x-1/2" style={{ left: `${x(d.avgSec)}%` }} title={`Average ${d.avgSec.toFixed(2)}s`} />
+                            </div>
+                            <div className="flex justify-between text-[11px] tabular-nums mt-0.5">
+                              <span className="text-mint">{d.fastestSec.toFixed(2)}</span>
+                              <span className="text-white">avg {d.avgSec.toFixed(2)}</span>
+                              <span className="text-bad">{d.slowestSec.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className={`text-xs ${MUTED}`}>No races at this distance yet</span>
+                        )}
                       </td>
                       <td className="px-3 py-2">
                         <input
@@ -464,7 +482,9 @@ function Builder({ directory, seed }: { directory: DirectoryCore[]; seed: Builde
           </div>
           <p className={`text-xs ${MUTED} mb-8 max-w-3xl`}>
             PWR and VAR are estimates for this distance on the game&apos;s 0–100 scale. Under {THIN_SAMPLE} races at a distance is
-            flagged, and those numbers lean on the core&apos;s form at other distances. Enter the decimal odds shown for a core to
+            flagged, and those numbers lean on the core&apos;s form at other distances. Fastest, average and slowest are the
+            core&apos;s real times here; Typical is what the sim uses — the average with freak results (a crash, a stall) pulled
+            in and, for thin samples, a little of its form at other distances. Enter the decimal odds shown for a core to
             compare them with the simulation.
           </p>
 

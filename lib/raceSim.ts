@@ -63,6 +63,10 @@ export interface DistanceEstimate {
   sdSec: number; // race-to-race spread
   power: number; // estimated PWR at this distance, game scale
   variance: number; // estimated VAR at this distance, game scale
+  /** The core's actual fastest, average and slowest times here (null with no races here). */
+  fastestSec: number | null;
+  avgSec: number | null;
+  slowestSec: number | null;
 }
 
 export interface EstimateSet {
@@ -143,6 +147,7 @@ export function estimateFromRaces(races: RaceHistoryEntry[], paidOnly: boolean, 
   const TYPICAL_SD_PCT = cal.typicalSdPct;
   // % deviation from the population average, grouped by distance
   const byDist = new Map<number, number[]>();
+  const rawTimes = new Map<number, number[]>(); // actual seconds, before outliers are pulled in
   for (const r of races) {
     if (r.rvmode !== mode || r.time == null || r.cb == null) continue;
     if (paidOnly && !(Number(r.fee) > 0)) continue;
@@ -152,6 +157,7 @@ export function estimateFromRaces(races: RaceHistoryEntry[], paidOnly: boolean, 
     const list = byDist.get(dist) ?? [];
     list.push((r.time / pop - 1) * 100);
     byDist.set(dist, list);
+    rawTimes.set(dist, [...(rawTimes.get(dist) ?? []), r.time]);
   }
   if (byDist.size === 0) return null;
 
@@ -192,6 +198,9 @@ export function estimateFromRaces(races: RaceHistoryEntry[], paidOnly: boolean, 
       sdSec: round((POP[dist] * sdPct) / 100, 3),
       power: toPower(dev),
       variance: toVariance(sdPct / TYPICAL_SD_PCT[dist]),
+      fastestSec: n ? Math.min(...rawTimes.get(dist)!) : null,
+      avgSec: n ? round(mean(rawTimes.get(dist)!), 2) : null,
+      slowestSec: n ? Math.max(...rawTimes.get(dist)!) : null,
     };
   }
 
