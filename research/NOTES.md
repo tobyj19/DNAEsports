@@ -92,6 +92,24 @@ gates, star, paid, quest, payout, class — **ignore class**, it's legacy data).
 - Core Overview card, "Likely <type>" in the Pair Predictor, parent badges + "Offspring distance"
   filter in the Pair Finder. Named "Distance profile" (not "track record").
 
+### Esports races in distance profiles + best-distance tier (Oct 10)
+
+- League races aren't in /fbike/i/hraces. `research/esports-crawl.py` reads per-core career
+  totals by distance from POST /fbike/esports/hstats {hid, season:"all"} (data[cb].all:
+  races_n, time_sum, win_n, posmap) for every rostered core, and with `--lineage` every core
+  in the crawl (ex-team cores). Same core's esports vs regular avg time: within ~0.1% at
+  every distance (70 rostered cores) → merged as-is.
+- Bike distance profiles: "bike" = all races (default; breeding tools use it), plus
+  "bikeMain" / "bikeEsports" views for cores with league races → All · Main game · Esports
+  switch on the Distance profile card. With esports merged, parents' type accuracy
+  right side 64% (from 63%).
+- New tier "best": not conclusive at the extremes but 3+ distances with 10+ races each
+  spanning 600m+ → band of the distance it runs best. Hiding conclusive cores' short/long
+  races, it matches their full type's side 71% bike / 73% car and horse (exact ~41–45%).
+  Order: own → best → confident parents → most-raced band.
+- Weekly workflow runs the esports crawl (continue-on-error) before distance-export.
+- Example: core 22154 — 178 regular + 538 league races → Sprint-Mid, runs best at 1400m.
+
 ### Distance fallback fix (Oct 10)
 
 - Parent-based "Likely" types now use only parents with confident (medium/high) profiles.

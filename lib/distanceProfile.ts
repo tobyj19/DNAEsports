@@ -4,12 +4,16 @@
 // research/distance-export.py (--site lib/data/distance-profiles.json). Same
 // time-based method and categories as lib/distance-strategy.ts. Fallbacks:
 //   own      conclusive profile from its own races
+//   best     not conclusive at short and long distances, but 3+ distances with 10+ races
+//            spanning 600m+: type from the distance it runs best (right side ~7 in 10)
 //   parents  "Developing" — likely type from its parents' confident (medium/high) leans
 //            (offspring lean = a + b x parents' average lean; right side of sprint / mid /
 //            marathon ~6 in 10 on bike)
 //   raced    "Developing" — the band of its most-raced distance (<=1300m Sprint,
 //            1400-1500m Sprint-Mid, 1600-1700m Mid, 1800-1900m Mid-Marathon,
 //            >=2000m Marathon), when parents aren't confident either
+// Bike merges Pro League races (research/esports-crawl.py) — the default "All" view,
+// used everywhere — and esports cores also get separate Main game / Esports views.
 // Server-only (the data file is ~2 MB); pages pass small entries down.
 
 import data from "./data/distance-profiles.json";
@@ -17,14 +21,15 @@ import type { RaceMode } from "./gameCoreSearch";
 
 import type { DistanceType } from "./distanceTypes";
 export type { DistanceType } from "./distanceTypes";
-export type DistanceSource = "own" | "parents" | "raced";
+export type DistanceSource = "own" | "parents" | "raced" | "best";
 
 export interface CoreDistance {
-  /** Own type ("own"), likely type from the parents ("parents"), or the band it races in most ("raced"). */
+  /** Own type ("own"), type from its best distance ("best"), likely type from the parents ("parents"),
+   * or the band it races in most ("raced"). */
   type: DistanceType | null;
   /** % slower per +1000m vs its own average: positive = fades (sprinter), negative = stayer. */
   lean: number | null;
-  /** Preferred esports distance (own profiles only). */
+  /** Preferred esports distance ("own"), or the distance it runs best ("best"). */
   preferred: number | null;
   confidence: "high" | "medium" | "low" | null;
   source: DistanceSource;
@@ -38,7 +43,7 @@ interface RawFile {
   sources: DistanceSource[];
   confidence: ("high" | "medium" | "low")[];
   parentFit: Record<RaceMode, { a: number; b: number; n: number }>;
-  cores: Record<string, Partial<Record<RaceMode, (number | null)[]>>>;
+  cores: Record<string, Partial<Record<RaceMode | "bikeMain" | "bikeEsports", (number | null)[]>>>;
 }
 
 const FILE = data as unknown as RawFile;
@@ -51,8 +56,9 @@ export function typeForLean(lean: number, preferred = 1600): DistanceType {
   return preferred >= 1400 && preferred <= 1800 ? "Mid" : "All-Rounder";
 }
 
-export function getDistanceProfile(hid: number, mode: RaceMode): CoreDistance | null {
-  const e = FILE.cores[String(hid)]?.[mode];
+export type DistanceView = "all" | "main" | "esports";
+
+function decode(e: (number | null)[] | undefined): CoreDistance | null {
   if (!e) return null;
   const [cat, lean, preferred, conf, source, mostDist, mostN, total] = e;
   return {
@@ -64,6 +70,18 @@ export function getDistanceProfile(hid: number, mode: RaceMode): CoreDistance | 
     mostRaced: mostDist != null ? { distance: mostDist, races: mostN ?? 0 } : null,
     totalRaces: total ?? 0,
   };
+}
+
+/** A core's distance profile ("All" races — regular plus Pro League for bike). */
+export function getDistanceProfile(hid: number, mode: RaceMode): CoreDistance | null {
+  return decode(FILE.cores[String(hid)]?.[mode]);
+}
+
+/** Bike Main game / Esports views, for cores with Pro League races; null otherwise. */
+export function getBikeViews(hid: number): { main: CoreDistance | null; esports: CoreDistance | null } | null {
+  const c = FILE.cores[String(hid)];
+  if (!c?.bikeEsports) return null;
+  return { main: decode(c.bikeMain), esports: decode(c.bikeEsports) };
 }
 
 /** Likely distance type of a pair's offspring from the parents' leans; null when neither parent has one. */

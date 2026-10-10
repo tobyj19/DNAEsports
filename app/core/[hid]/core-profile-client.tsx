@@ -13,6 +13,8 @@ import RaceHistory from "./race-history";
 import BreederScoreCards, { GradeBadges } from "./breeder-score";
 import DistanceCard from "./distance-card";
 import type { CoreDistance } from "@/lib/distanceProfile";
+
+type BikeViews = { main: CoreDistance | null; esports: CoreDistance | null } | null;
 import type { BreederGrades, BreederScores } from "@/lib/breederScore";
 
 const MODES: RaceMode[] = ["bike", "car", "horse"];
@@ -33,12 +35,14 @@ export default function CoreProfileClient({
   breeder,
   familyGrades,
   distance,
+  distanceViews,
 }: {
   info: CoreInfo;
   initialMode: RaceMode | null;
   breeder: BreederScores;
   familyGrades: BreederGrades;
   distance: Partial<Record<RaceMode, CoreDistance>>;
+  distanceViews: BikeViews;
 }) {
   // Default to the mode the core has raced most.
   const busiest = [...MODES].sort((a, b) => info.modes[b].racesRun - info.modes[a].racesRun)[0];
@@ -105,7 +109,7 @@ export default function CoreProfileClient({
 
       <div className="min-w-0 flex flex-col gap-4">
         <Hero info={info} accent={accent} />
-        {tab === "overview" && <Overview info={info} mode={mode} accent={accent} breeder={breeder} distance={distance} />}
+        {tab === "overview" && <Overview info={info} mode={mode} accent={accent} breeder={breeder} distance={distance} distanceViews={distanceViews} />}
         {tab === "telemetry" && <RacesGate state={races}>{(d) => <Telemetry info={info} races={d.races} mode={mode} />}</RacesGate>}
         {tab === "estimates" && <RacesGate state={races}>{(d) => <Estimates estimates={d.estimates[mode]} official={info.modes[mode]} mode={mode} />}</RacesGate>}
         {tab === "races" && (
@@ -192,12 +196,14 @@ function Overview({
   accent,
   breeder,
   distance,
+  distanceViews,
 }: {
   info: CoreInfo;
   mode: RaceMode;
   accent: string;
   breeder: BreederScores;
   distance: Partial<Record<RaceMode, CoreDistance>>;
+  distanceViews: BikeViews;
 }) {
   const mounted = useMounted();
   const m = info.modes[mode];
@@ -229,7 +235,7 @@ function Overview({
 
       <BreederScoreCards scores={breeder} mode={mode} founder={info.type === "genesis"} />
 
-      <DistanceCard profile={distance[mode]} mode={mode} />
+      <DistanceCard profile={distance[mode]} views={distanceViews} mode={mode} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Meter

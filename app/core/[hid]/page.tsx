@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getCoreInfo } from "@/lib/coreInfo";
 import { getBreederScores, getBreederGrades } from "@/lib/breederScore";
-import { getDistanceProfiles } from "@/lib/distanceProfile";
+import { getBikeViews, getDistanceProfiles } from "@/lib/distanceProfile";
 import CoreProfileClient from "./core-profile-client";
 
 interface Props {
@@ -38,6 +38,7 @@ export default async function CorePage({ params, searchParams }: Props) {
       breeder={getBreederScores(hid)}
       familyGrades={getBreederGrades(familyHids)}
       distance={getDistanceProfiles(hid, [info.father?.hid, info.mother?.hid])}
+      distanceViews={getBikeViews(hid)}
     />
   );
 }

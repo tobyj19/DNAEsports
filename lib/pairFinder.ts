@@ -156,7 +156,7 @@ export interface Candidate extends ParentMeta {
   /** Live official PWR / VAR / ADJ (0-100) and races in this mode. */
   stats: PowerStats | null;
   /** Its distance type, and whether that's its own ("own") or a likely type from its parents. */
-  distance: { type: DistanceType; own: boolean; from: "own" | "parents" | "raced" } | null;
+  distance: { type: DistanceType; own: boolean; from: "own" | "parents" | "raced" | "best" } | null;
   grades: ReturnType<typeof parentGrades>;
 }
 

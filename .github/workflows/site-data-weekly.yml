@@ -37,6 +37,12 @@ jobs:
         shell: pwsh
         run: ./research/history-crawl.ps1 -OutDir "$env:RUNNER_TEMP/rd" -Threads 10
 
+      - name: Pro League race totals (merged into bike distance profiles)
+        # League races aren't in the normal race feed. If this step fails, the
+        # distance profiles are still built, just without esports races.
+        continue-on-error: true
+        run: python research/esports-crawl.py "$RUNNER_TEMP/rd" --threads 12 --lineage "$RUNNER_TEMP/rd/lineage.txt"
+
       - name: Star analysis, distance profiles, Breeding Scores
         run: |
           rd="$RUNNER_TEMP/rd"; mkdir -p "$RUNNER_TEMP/new"
