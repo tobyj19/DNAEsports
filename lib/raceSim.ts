@@ -80,6 +80,49 @@ export interface SimCore {
   official: { races: number; power: number; variance: number; adjOdds: number } | null;
   all: EstimateSet | null; // null = no usable bike races
   paid: EstimateSet | null;
+  form: CoreForm | null;
+}
+
+export interface FormCount {
+  races: number;
+  wins: number;
+  top3: number;
+}
+
+/** A core's bike racing record, for the Live race view. */
+export interface CoreForm extends FormCount {
+  byDistance: Record<number, FormCount>;
+  /** Newest first. */
+  last5: { pos: number; gates: number | null }[];
+  /** Share of races with a blue / yellow star. */
+  blue: number;
+  yellow: number;
+}
+
+/** Win / top-3 record from race history (bike only), overall and per distance. */
+export function formFromRaces(races: RaceHistoryEntry[]): CoreForm | null {
+  const bike = races.filter((r) => r.rvmode === "bike" && r.pos > 0);
+  if (bike.length === 0) return null;
+  const count = (xs: RaceHistoryEntry[]): FormCount => ({
+    races: xs.length,
+    wins: xs.filter((r) => r.pos === 1).length,
+    top3: xs.filter((r) => r.pos <= 3).length,
+  });
+  const byDistance: Record<number, FormCount> = {};
+  const groups = new Map<number, RaceHistoryEntry[]>();
+  for (const r of bike) {
+    const d = Math.round(Number(r.cb) * 100);
+    if (!d) continue;
+    groups.set(d, [...(groups.get(d) ?? []), r]);
+  }
+  groups.forEach((xs, d) => (byDistance[d] = count(xs)));
+  return {
+    ...count(bike),
+    byDistance,
+    last5: bike.slice(0, 5).map((r) => ({ pos: r.pos, gates: r.rgate ?? null })),
+    blue: bike.filter((r) => r.star === 2 || r.star === 5).length / bike.length,
+    yellow: bike.filter((r) => r.star === 3 || r.star === 5).length / bike.length,
+  };
 }
 
 const round = (v: number, dp: number) => Math.round(v * 10 ** dp) / 10 ** dp;
@@ -201,6 +244,10 @@ export interface RaceEntrant {
   time: number | null;
   /** The game's odds for this core (betting market before the race, race history after); null if none yet. */
   odds: number | null;
+  /** The game's stars for this core in this race: 0 none, 2 blue, 3 yellow, 5 both. */
+  star: number;
+  /** Stable (racing vault) name, as the game shows it. */
+  stable: string | null;
 }
 
 export interface RaceInfo {
@@ -211,6 +258,16 @@ export interface RaceInfo {
   distance: number;
   gates: number;
   status: string;
+  /** Entry fee > 0. Only paid races (and some tournaments) get odds; free / Trainer races never do. */
+  paid: boolean;
+  feeUsd: number | null;
+  prizeUsd: number | null;
+  /** "wta" (winner takes all), "top2", ... as the game names it. */
+  payout: string | null;
+  track: string | null;
+  /** ISO times: start is set once the race fills; end once it has run. */
+  startTime: string | null;
+  endTime: string | null;
   /** Where the odds came from: the live betting market (race filled, not yet saved to history),
    * race history (finished), or none (still open for entries). */
   oddsFrom: "market" | "history" | null;
@@ -224,6 +281,18 @@ interface RawRace {
   cb?: number;
   rgate?: number;
   status?: string;
+  fee_fixed?: Record<string, number> | null;
+  fee?: number | null;
+  feeusd?: number | null;
+  prizeusd?: number | null;
+  payout?: string | null;
+  track?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  bluestars?: number[] | null;
+  yellowstars?: number[] | null;
+  racing_vaults?: Record<string, string> | null;
+  vaults_names?: Record<string, string> | null;
   hids?: number[];
   hs?: { hid: number; gate?: number | null; pos?: number | null; time?: number | null }[];
 }
@@ -283,10 +352,21 @@ export async function fetchRace(rid: string): Promise<RaceInfo | null> {
     distance: Math.round((r.cb ?? 0) * 100),
     gates: r.rgate ?? hids.length,
     status: r.status ?? "",
+    paid: Object.values(r.fee_fixed ?? {}).some((v) => Number(v) > 0) || Number(r.fee) > 0,
+    feeUsd: typeof r.feeusd === "number" ? r.feeusd : null,
+    prizeUsd: typeof r.prizeusd === "number" ? r.prizeusd : null,
+    payout: r.payout ?? null,
+    track: r.track ?? null,
+    startTime: r.start_time ?? null,
+    endTime: r.end_time ?? null,
     oddsFrom,
     entrants: hids.map((hid) => {
       const h = byHid.get(hid);
-      return { hid, gate: h?.gate ?? null, pos: h?.pos ?? null, time: h?.time ?? null, odds: odds.get(hid) ?? null };
+      // Same star rule as the game's own race page: blue 2, yellow 3, both 5
+      const star = ((r.bluestars ?? []).includes(hid) ? 2 : 0) + ((r.yellowstars ?? []).includes(hid) ? 3 : 0);
+      const vault = r.racing_vaults?.[String(hid)];
+      const stable = (vault && r.vaults_names?.[vault]?.trim()) || null;
+      return { hid, gate: h?.gate ?? null, pos: h?.pos ?? null, time: h?.time ?? null, odds: odds.get(hid) ?? null, star, stable };
     }),
   };
 }
@@ -333,6 +413,7 @@ export async function buildSimCores(hids: number[]): Promise<SimCore[]> {
         : null,
       all: estimateFromRaces(histories[i], false),
       paid: estimateFromRaces(histories[i], true),
+      form: formFromRaces(histories[i]),
     };
   });
 }

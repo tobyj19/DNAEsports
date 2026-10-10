@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { SIM_DISTANCES, THIN_SAMPLE, simulateRace, type RaceInfo, type SimCore, type SimResult } from "@/lib/raceSim";
+import { SIM_DISTANCES, THIN_SAMPLE, simulateRace, type SimCore, type SimResult } from "@/lib/raceSim";
+import LiveRace from "./live-race";
+import { CHUNK, MUTED, pct, postJson, verdict, type BuilderSeed } from "./shared";
 import type { GameCoreEntry } from "@/lib/gameCoreSearch";
 
 const MIN_GATES = 2;
 const MAX_GATES = 25; // real races run up to 25 gates
-const CHUNK = 20;
 const MAX_MATCHES = 7; // short enough that the dropdown never needs its own scroll bar
 const SEARCH_DEBOUNCE_MS = 250;
-const MUTED = "text-muted";
 
 export interface DirectoryCore {
   hid: number;
@@ -17,30 +17,51 @@ export interface DirectoryCore {
   team: string; // esports team, or the vault it was added from
 }
 
-function ordinal(n: number): string {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
 
-function pct(v: number): string {
-  if (v === 0) return "0%";
-  if (v < 0.001) return "<0.1%";
-  return `${(v * 100).toFixed(1)}%`;
-}
-
-async function postJson<T>(body: unknown): Promise<T> {
-  const res = await fetch("/api/race-sim", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? "Request failed.");
-  return data as T;
-}
+type Tab = "live" | "build";
 
 export default function RaceSimClient({ directory }: { directory: DirectoryCore[] }) {
+  const [tab, setTab] = useState<Tab>("live");
+  const [seed, setSeed] = useState<BuilderSeed | null>(null);
+  const TABS: { id: Tab; label: string; hint: string }[] = [
+    { id: "live", label: "Live race", hint: "paste a race link" },
+    { id: "build", label: "Build a race", hint: "pick the cores yourself" },
+  ];
+  return (
+    <div>
+      <div role="tablist" className="flex gap-1 border-b border-line mb-5">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-2 -mb-px border-b-2 text-sm transition-colors ${
+              tab === t.id ? "border-cyan text-white font-medium" : `border-transparent ${MUTED} hover:text-white`
+            }`}
+          >
+            {t.label}
+            <span className={`ml-2 text-xs ${MUTED} hidden sm:inline`}>{t.hint}</span>
+          </button>
+        ))}
+      </div>
+      {/* Both stay mounted so switching tabs keeps each one's race */}
+      <div hidden={tab !== "live"}>
+        <LiveRace
+          onCopy={(s) => {
+            setSeed(s);
+            setTab("build");
+          }}
+        />
+      </div>
+      <div hidden={tab !== "build"}>
+        <Builder directory={directory} seed={seed} />
+      </div>
+    </div>
+  );
+}
+
+function Builder({ directory, seed }: { directory: DirectoryCore[]; seed: BuilderSeed | null }) {
   const [gates, setGates] = useState(8);
   const [distance, setDistance] = useState(1600);
   const [paidOnly, setPaidOnly] = useState(false);
@@ -55,14 +76,6 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
   const [odds, setOdds] = useState<Record<number, string>>({});
   const [results, setResults] = useState<SimResult[]>([]);
   const [gameHits, setGameHits] = useState<GameCoreEntry[]>([]); // same game-wide index as Core Search
-  // A real race loaded from a pasted link: its name/status, and actual finishes once it has run
-  const [raceLink, setRaceLink] = useState("");
-  const [raceBusy, setRaceBusy] = useState(false);
-  const [race, setRace] = useState<(RaceInfo & { note: string | null }) | null>(null);
-  const actual = useMemo(
-    () => Object.fromEntries((race?.entrants ?? []).filter((e) => e.pos != null).map((e) => [e.hid, e.pos as number])),
-    [race]
-  );
   const [gameSearching, setGameSearching] = useState(false);
 
   const est = (c: SimCore) => (paidOnly ? c.paid : c.all);
@@ -111,61 +124,16 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
     loadCores([hid]);
   }
 
-  /** Paste a race link (fbike.dnaracing.run/race/<id>) or race ID: fill the field from the real race. */
-  async function loadRace() {
-    const text = raceLink.trim();
-    const rid =
-      text.match(/race(?:-quest)?\/([A-Za-z0-9-]+)/)?.[1] ??
-      text.match(/[?&]rid=([A-Za-z0-9-]+)/)?.[1] ??
-      (/^[A-Za-z0-9-]{3,60}$/.test(text) ? text : null);
-    if (!rid) {
-      setError("Paste a race link like https://fbike.dnaracing.run/race/83d4a1a669-1-B, or just the race ID.");
-      return;
-    }
-    setRaceBusy(true);
-    setError(null);
-    try {
-      const { race: r } = await postJson<{ race: RaceInfo }>({ rid });
-      if (r.mode !== "bike") {
-        setError(`That's a ${r.mode} race. Race Sim uses bike race times, so it only simulates bike races.`);
-        return;
-      }
-      if (r.entrants.length === 0) {
-        setError("That race has no entrants yet.");
-        return;
-      }
-      const g = Math.min(MAX_GATES, Math.max(MIN_GATES, r.gates, r.entrants.length));
-      const next: (number | null)[] = new Array(g).fill(null);
-      const unplaced: number[] = [];
-      for (const e of r.entrants) {
-        if (e.gate != null && e.gate >= 1 && e.gate <= g && next[e.gate - 1] == null) next[e.gate - 1] = e.hid;
-        else unplaced.push(e.hid);
-      }
-      for (const hid of unplaced) {
-        const i = next.indexOf(null);
-        if (i !== -1) next[i] = hid;
-      }
-      let note: string | null = null;
-      let d = r.distance;
-      if (!SIM_DISTANCES.includes(d)) {
-        d = SIM_DISTANCES.reduce((best, x) => (Math.abs(x - r.distance) < Math.abs(best - r.distance) ? x : best), SIM_DISTANCES[0]);
-        note = `This race is ${r.distance}m; Race Sim covers the 7 esports distances, so it's simulated at ${d}m.`;
-      }
-      if (r.entrants.length > MAX_GATES) note = `${note ? note + " " : ""}Only the first ${MAX_GATES} entrants fit.`;
-      setGates(g);
-      setSlots(next);
-      setDistance(d);
-      // The game's odds, so "Against odds entered" compares our sim with the market straight away
-      setOdds(Object.fromEntries(r.entrants.filter((e) => e.odds != null).map((e) => [e.hid, String(e.odds)])));
-      setRace({ ...r, note });
-      setRaceLink("");
-      loadCores(next.filter((h): h is number => h != null));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't load that race.");
-    } finally {
-      setRaceBusy(false);
-    }
-  }
+  // "Copy to builder" from the Live race tab
+  useEffect(() => {
+    if (!seed) return;
+    setGates(seed.gates);
+    setSlots(seed.slots);
+    setDistance(seed.distance);
+    setOdds(seed.odds);
+    loadCores(seed.slots.filter((h): h is number => h != null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed?.id]);
 
   async function addVault() {
     const v = vault.trim().toLowerCase();
@@ -311,45 +279,6 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
           </label>
         </div>
 
-        <label htmlFor="sim-race" className={`block text-xs ${MUTED} mb-1`}>
-          Paste a race link to load its whole field (cores in their real gates, the race&apos;s distance and gate count)
-        </label>
-        <form
-          className="flex flex-wrap gap-3 max-w-xl mb-1"
-          onSubmit={(e) => {
-            e.preventDefault();
-            loadRace();
-          }}
-        >
-          <input
-            id="sim-race"
-            value={raceLink}
-            onChange={(e) => setRaceLink(e.target.value)}
-            placeholder="https://fbike.dnaracing.run/race/83d4a1a669-1-B"
-            autoComplete="off"
-            className="bg-ink border border-line rounded px-2 py-1.5 text-sm flex-1 min-w-0"
-          />
-          <button
-            type="submit"
-            disabled={raceBusy || !raceLink.trim()}
-            className="px-3 py-1.5 rounded bg-cyan text-ink text-sm font-medium hover:opacity-90 disabled:opacity-50"
-          >
-            {raceBusy ? "Loading…" : "Load race"}
-          </button>
-        </form>
-        {race && (
-          <p className={`text-xs ${MUTED} mb-3`}>
-            Loaded <span className="text-white">{race.name}</span> · {race.distance}m · {race.gates} gates · {race.entrants.length} entrants
-            {Object.keys(actual).length > 0 ? " · finished — actual results shown below" : race.status ? ` · ${race.status}` : ""}
-            {race.oddsFrom === "market" && <span className="block text-mint">Odds filled in from the game&apos;s betting market.</span>}
-            {race.oddsFrom === "history" && <span className="block">Odds filled in from the game&apos;s race records.</span>}
-            {race.oddsFrom == null && race.status === "open" && (
-              <span className="block">No odds yet — the game sets them once the race fills.</span>
-            )}
-            {race.note && <span className="block text-amber">{race.note}</span>}
-          </p>
-        )}
-        <div className={`text-xs ${MUTED} mb-3 mt-1`}>or build it yourself:</div>
 
         <label htmlFor="sim-search" className={`block text-xs ${MUTED} mb-1`}>
           Add a core to the next empty gate: search any core by name, team or core ID
@@ -418,7 +347,6 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
                 onClick={() => {
                   setSlots(new Array(gates).fill(null));
                   setOdds({});
-                  setRace(null);
                 }}
                 className="px-3 py-1.5 rounded border border-line text-sm hover:bg-panel transition-colors"
               >
@@ -464,7 +392,7 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
                             ? "Empty. Search above to fill this gate."
                             : loading
                               ? `Loading race history for ${nameOf(hid)}…`
-                              : `${nameOf(hid)} has no ${paidOnly ? "paid " : ""}bike races at the esports distances, so it is left out of the race.`}
+                              : `${nameOf(hid)} has no ${paidOnly ? "paid " : ""}bike race times yet, so it is left out of the race.`}
                         </td>
                         <td className="px-2 py-2 text-right">
                           {hid != null && (
@@ -563,7 +491,6 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
                       <th className="text-left px-3 py-2">Finish spread, 1st to last</th>
                       <th className="text-right px-3 py-2">Fair odds</th>
                       <th className="text-left px-3 py-2">Against odds entered</th>
-                      {Object.keys(actual).length > 0 && <th className="text-right px-3 py-2">Actual</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -598,16 +525,11 @@ export default function RaceSimClient({ directory }: { directory: DirectoryCore[
                             {edge == null ? (
                               <span className={MUTED}>No odds entered</span>
                             ) : (
-                              <span className={edge > 1.05 ? "text-mint" : edge < 0.95 ? "text-bad" : MUTED}>
-                                {edge > 1.05 ? "Underrated" : edge < 0.95 ? "Overrated" : "About right"} · returns {edge.toFixed(2)} per 1 staked
+                              <span className={verdict(edge).className}>
+                                {verdict(edge).label} · returns {edge.toFixed(2)} per 1 staked
                               </span>
                             )}
                           </td>
-                          {Object.keys(actual).length > 0 && (
-                            <td className={`px-3 py-2 text-right tabular-nums ${actual[r.hid] === 1 ? "text-mint font-semibold" : ""}`}>
-                              {actual[r.hid] != null ? ordinal(actual[r.hid]) : "—"}
-                            </td>
-                          )}
                         </tr>
                       );
                     })}

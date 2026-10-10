@@ -17,9 +17,10 @@ export default async function RaceSimPage() {
     <div>
       <h1 className="text-2xl font-semibold tracking-tight mb-2">Race Sim</h1>
       <p className="text-sm text-muted mb-6 max-w-2xl">
-        Build a race: choose the number of gates and the distance, put a core in each gate, and the race is
-        run 20,000 times. PWR and VAR are estimated for each distance from real bike-mode race times, since
-        the game only publishes one number per core across all distances.
+        Paste a real race link to see the field with the game&apos;s odds and stars, each core&apos;s form, and
+        our simulation against the market, live until the result is in. Or build your own race. Either way the
+        race is run 20,000 times, with PWR and VAR estimated for each distance from real bike-mode race times,
+        since the game only publishes one number per core across all distances.
       </p>
       <BenchmarkNote className="mb-6 max-w-2xl" />
       <RaceSimClient directory={directory} />

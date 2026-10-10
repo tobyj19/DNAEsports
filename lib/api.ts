@@ -231,6 +231,7 @@ export interface RaceHistoryEntry {
   star: number | null; // 0=none, 2=blue, 3=yellow, 5=both (2+3) — confirmed by cross-checking against the site's own display
   prize_eth: number | null; // misleadingly named — this is the DEZ prize amount, not ETH
   fee: number | null; // DEZ entry fee
+  rgate?: number | null; // gates in that race
 }
 
 export function getRaceHistory(hid: number, limit = 500) {
