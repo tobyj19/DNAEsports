@@ -12,6 +12,7 @@ import EsportsHistory from "./esports-history";
 type View = "history" | "distro" | "speed";
 type PaidFilter = "all" | "paid" | "free";
 const PAGE = 50;
+const RACE_URL = "https://fbike.dnaracing.run/race";
 const ROLLING = 10;
 
 const tooltipStyle = { backgroundColor: "#0B111A", border: "1px solid #1B2533", borderRadius: 10 };
@@ -218,6 +219,8 @@ function Check({ ok, title }: { ok: boolean; title: string }) {
 }
 
 function RaceList({ races, total, onMore, mode }: { races: SlimRace[]; total: number; onMore: () => void; mode: RaceMode }) {
+  // The game attaches pre-race odds to most races; the column only shows when any race here has them.
+  const showOdds = races.some((r) => r.odds != null);
   return (
     <Card title="Races" right={<span className="text-xs text-muted">{total.toLocaleString("en-US")} matching</span>}>
       {races.length === 0 ? (
@@ -231,6 +234,11 @@ function RaceList({ races, total, onMore, mode }: { races: SlimRace[]; total: nu
                 <th className="text-left font-semibold">Race</th>
                 <th className="text-right font-semibold">Dist</th>
                 <th className="text-right font-semibold">Pos</th>
+                {showOdds && (
+                  <th className="text-right font-semibold" title="The game's pre-race odds for this core">
+                    Odds
+                  </th>
+                )}
                 <th className="text-right font-semibold">Time</th>
                 <th className="text-right font-semibold">Profit</th>
                 <th className="text-center font-semibold" title="Won">W</th>
@@ -246,7 +254,13 @@ function RaceList({ races, total, onMore, mode }: { races: SlimRace[]; total: nu
                   <tr key={`${r.at}-${i}`} className="border-t border-white/[0.05]">
                     <td className="py-2 pr-2 whitespace-nowrap text-xs text-muted tabular-nums">{r.at ? r.at.slice(0, 10) : "—"}</td>
                     <td className="pr-2 max-w-[14rem] truncate" title={r.name}>
-                      {r.name}
+                      {r.rid ? (
+                        <a href={`${RACE_URL}/${r.rid}`} target="_blank" rel="noreferrer" className="hover:text-white hover:underline">
+                          {r.name}
+                        </a>
+                      ) : (
+                        r.name
+                      )}
                       <span className="ml-1.5 text-[10px] text-muted">{r.gates}g</span>
                     </td>
                     <td className="text-right tabular-nums">{r.distance}</td>
@@ -255,6 +269,14 @@ function RaceList({ races, total, onMore, mode }: { races: SlimRace[]; total: nu
                       {r.star === 2 || r.star === 5 ? <span className="text-blue-400">★</span> : null}
                       {r.star === 3 || r.star === 5 ? <span className="text-yellow-400">★</span> : null}
                     </td>
+                    {showOdds && (
+                      <td
+                        className={`text-right tabular-nums ${r.odds != null && r.pos === 1 ? "text-mint" : ""}`}
+                        title={r.odds != null ? `${(100 / r.odds).toFixed(1)}% implied win chance` : "No odds for this race"}
+                      >
+                        {r.odds != null ? `${r.odds.toFixed(2)}x` : "—"}
+                      </td>
+                    )}
                     <td className="text-right tabular-nums">{r.time.toFixed(2)}</td>
                     <td className={`text-right tabular-nums ${profit > 0 ? "text-mint" : profit < 0 ? "text-bad" : "text-muted"}`}>
                       {profit > 0 ? "+" : ""}

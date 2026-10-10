@@ -192,6 +192,105 @@ async function rawPost<T>(path: string, body: unknown, attempt = 1): Promise<T> 
   return json.result as T;
 }
 
+export interface RaceEntrant {
+  hid: number;
+  /** Starting gate (1-based), when the race has assigned one. */
+  gate: number | null;
+  /** Finishing position and time, once the race has run. */
+  pos: number | null;
+  time: number | null;
+  /** The game's odds for this core (betting market before the race, race history after); null if none yet. */
+  odds: number | null;
+}
+
+export interface RaceInfo {
+  rid: string;
+  name: string;
+  mode: string;
+  /** Metres (cb x 100). */
+  distance: number;
+  gates: number;
+  status: string;
+  /** Where the odds came from: the live betting market (race filled, not yet saved to history),
+   * race history (finished), or none (still open for entries). */
+  oddsFrom: "market" | "history" | null;
+  entrants: RaceEntrant[];
+}
+
+interface RawRace {
+  rid: string;
+  race_name?: string;
+  rvmode?: string;
+  cb?: number;
+  rgate?: number;
+  status?: string;
+  hids?: number[];
+  hs?: { hid: number; gate?: number | null; pos?: number | null; time?: number | null }[];
+}
+
+/**
+ * One race's field, from the game's own race page API (POST /fbike/races/race {rid},
+ * found in the fbike.dnaracing.run code). Not cached: an open race fills up over time.
+ */
+export async function fetchRace(rid: string): Promise<RaceInfo | null> {
+  const res = await fetch(`${API_BASE}/races/race`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rid }),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`API error ${res.status} on /races/race`);
+  const json = await res.json();
+  const r = json?.result as RawRace | null;
+  if (json?.status !== "success" || !r?.rid) return null;
+  const byHid = new Map((r.hs ?? []).map((h) => [h.hid, h]));
+  const hids = Array.from(new Set([...(r.hids ?? []), ...byHid.keys()]));
+
+  // Odds exist from the moment the race fills. Before it runs they're on the game's
+  // betting market (dna.fairex.live): POST /fairex_races/markets/race {rid} -> simsdata.
+  // About 2 minutes after the finish they're saved on each core's race history record.
+  let oddsFrom: RaceInfo["oddsFrom"] = null;
+  const odds = new Map<number, number>();
+  if (r.status && r.status !== "open") {
+    try {
+      const m = await fetch("https://api.dnaracing.run/fairex_races/markets/race", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rid }),
+        cache: "no-store",
+      }).then((x) => x.json());
+      for (const s of m?.result?.simsdata ?? []) if (s?.hid && s.odds > 0) odds.set(s.hid, s.odds);
+      if (odds.size > 0) oddsFrom = "market";
+    } catch {}
+    if (odds.size === 0 && r.status === "finished") {
+      await Promise.all(
+        hids.map(async (hid) => {
+          try {
+            const recs = await rawPost<{ rid?: string; odds?: number }[]>("/i/hraces", { hid, limit: 20 });
+            const rec = recs.find((x) => x.rid === rid);
+            if (rec?.odds && rec.odds > 0) odds.set(hid, rec.odds);
+          } catch {}
+        })
+      );
+      if (odds.size > 0) oddsFrom = "history";
+    }
+  }
+
+  return {
+    rid: r.rid,
+    name: r.race_name ?? r.rid,
+    mode: r.rvmode ?? "bike",
+    distance: Math.round((r.cb ?? 0) * 100),
+    gates: r.rgate ?? hids.length,
+    status: r.status ?? "",
+    oddsFrom,
+    entrants: hids.map((hid) => {
+      const h = byHid.get(hid);
+      return { hid, gate: h?.gate ?? null, pos: h?.pos ?? null, time: h?.time ?? null, odds: odds.get(hid) ?? null };
+    }),
+  };
+}
+
 /** Resolves a vault address to the core IDs it holds. */
 export function fetchVaultHids(vault: string): Promise<number[]> {
   return rawPost<number[]>("/vault/bikes", { vault });

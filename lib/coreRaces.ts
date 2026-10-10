@@ -32,6 +32,10 @@ export interface SlimRace {
   payout: string;
   format: string;
   name: string;
+  /** Race ID (for links to the race page). */
+  rid: string | null;
+  /** The game's pre-race odds for this core (1 / (win chance x ~1.05)); null when the game has none. */
+  odds: number | null;
 }
 
 export interface CoreRaces {
@@ -47,6 +51,8 @@ interface RawRace extends RaceHistoryEntry {
   paytoken?: string;
   payout?: string;
   format?: string;
+  rid?: string;
+  odds?: number | null;
 }
 
 function slim(r: RawRace): SlimRace | null {
@@ -66,6 +72,8 @@ function slim(r: RawRace): SlimRace | null {
     payout: r.payout ?? "",
     format: r.format ?? "",
     name: r.race_name ?? "",
+    rid: r.rid ?? null,
+    odds: typeof r.odds === "number" && r.odds > 0 ? r.odds : null,
   };
 }
 

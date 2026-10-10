@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildSimCores, fetchVaultHids } from "@/lib/raceSim";
+import { buildSimCores, fetchRace, fetchVaultHids } from "@/lib/raceSim";
 
 // Race history is one upstream call per core, so allow the full 60s.
 export const maxDuration = 60;
@@ -7,11 +7,26 @@ export const maxDuration = 60;
 const MAX_HIDS_PER_REQUEST = 25;
 const VAULT_RE = /^0x[a-fA-F0-9]{40}$/;
 
-// Two jobs, so the page can show progress on a big vault:
+// Three jobs, so the page can show progress on a big vault:
+//   { rid }    -> { race }   a real race's field (from a pasted race link)
 //   { vault }  -> { hids }   resolve a vault address to its core IDs
 //   { hids }   -> { cores }  estimates for up to 25 cores at a time
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
+
+  if (typeof body?.rid === "string") {
+    const rid = body.rid.trim();
+    if (!/^[A-Za-z0-9-]{3,60}$/.test(rid)) {
+      return NextResponse.json({ error: "That doesn't look like a race link or race ID." }, { status: 400 });
+    }
+    try {
+      const race = await fetchRace(rid);
+      if (!race) return NextResponse.json({ error: "No race found with that ID." }, { status: 404 });
+      return NextResponse.json({ race });
+    } catch {
+      return NextResponse.json({ error: "Couldn't load that race from the DNA Racing API. Try again in a moment." }, { status: 502 });
+    }
+  }
 
   if (typeof body?.vault === "string") {
     if (!VAULT_RE.test(body.vault)) {
